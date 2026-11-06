@@ -1,0 +1,12 @@
+{
+  "devDependencies": {
+    "@types/node": "^26.6.6",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2"
+  },
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "start": "npm run typecheck && tsx app/Server.ts"
+  }
+}
