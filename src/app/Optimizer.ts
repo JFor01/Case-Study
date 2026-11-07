@@ -21,14 +21,37 @@ export class Optimizer {
         if (!Number.isFinite(start.x) || !Number.isFinite(start.y) || !Number.isFinite(start.z)) {
             throw new Error("Start point coordinates must be finite numbers");
         }
-        for (const [productId, productPositions] of positions) {
-            if (productPositions.length === 0) throw new Error(`No positions for product ${productId}`);
-        }
-        if (positions.size === 0) return { pickingOrder: [], distance: 0 };
+        const availablePositions = this.filterPickablePositions(positions);
+        if (availablePositions.size === 0) return { pickingOrder: [], distance: 0 };
 
         // Use the first suitable strategy: exact search first, then nearest neighbor.
-        const algorithm = this.algorithms.find((candidate) => candidate.canHandle(positions));
+        const algorithm = this.algorithms.find((candidate) => candidate.canHandle(availablePositions));
         if (!algorithm) throw new Error("No route algorithm can handle this request");
-        return algorithm.findShortestPath(positions, start);
+        return algorithm.findShortestPath(availablePositions, start);
+    }
+
+    private filterPickablePositions(positions: Map<string, Position[]>): Map<string, Position[]> {
+        const pickablePositions = new Map<string, Position[]>();
+        for (const [productId, productPositions] of positions) {
+            if (productPositions.length === 0) throw new Error(`No positions for product ${productId}`);
+
+            const inStock = productPositions.filter(
+                (position) => Number.isFinite(position.quantity) && position.quantity >= 1,
+            );
+            if (inStock.length === 0) {
+                throw new Error(`No positions with available quantity for product ${productId}`);
+            }
+
+            const withValidCoordinates = inStock.filter((position) =>
+                Number.isFinite(position.x) && position.x >= 0 &&
+                Number.isFinite(position.y) && position.y >= 0 &&
+                Number.isFinite(position.z) && position.z >= 0,
+            );
+            if (withValidCoordinates.length === 0) {
+                throw new Error(`No positions with valid non-negative coordinates for product ${productId}`);
+            }
+            pickablePositions.set(productId, withValidCoordinates);
+        }
+        return pickablePositions;
     }
 }

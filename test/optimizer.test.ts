@@ -116,6 +116,92 @@ describe('findShortestPath (more cases)', () => {
         assertClose(plan.distance, 2);
     });
 
+    it('ignores positions with no available quantity', () => {
+        const map = new Map([
+            ['product-1', [
+                { ...pos('empty-position', 'product-1', 1), quantity: 0 },
+                pos('available-position', 'product-1', 5),
+            ]],
+        ]);
+
+        const plan = optimizer.findShortestPath(map, { x: 0, y: 0, z: 0 });
+
+        assert.deepStrictEqual(plan.pickingOrder, [
+            { productId: 'product-1', positionId: 'available-position' },
+        ]);
+        assert.equal(plan.distance, 5);
+    });
+
+    it('throws when every position for a product is out of stock', () => {
+        const map = new Map([
+            ['product-1', [{ ...pos('empty-position', 'product-1', 1), quantity: 0 }]],
+        ]);
+        assert.throws(
+            () => optimizer.findShortestPath(map, { x: 0, y: 0, z: 0 }),
+            /no positions with available quantity for product product-1/i,
+        );
+    });
+
+    it('rejects quantities below one and non-finite quantities', () => {
+        const unavailableQuantities = [0.5, -1, Number.NaN, Number.POSITIVE_INFINITY];
+        for (const [index, quantity] of unavailableQuantities.entries()) {
+            const map = new Map([
+                ['product-1', [{ ...pos(`unavailable-${index}`, 'product-1', 1), quantity }]],
+            ]);
+            assert.throws(
+                () => optimizer.findShortestPath(map, { x: 0, y: 0, z: 0 }),
+                /no positions with available quantity for product product-1/i,
+            );
+        }
+    });
+
+    it('ignores positions with negative coordinates', () => {
+        const map = new Map([
+            ['product-1', [
+                pos('negative-position', 'product-1', -1),
+                pos('valid-position', 'product-1', 3),
+            ]],
+        ]);
+
+        const plan = optimizer.findShortestPath(map, { x: 0, y: 0, z: 0 });
+
+        assert.deepStrictEqual(plan.pickingOrder, [
+            { productId: 'product-1', positionId: 'valid-position' },
+        ]);
+        assert.equal(plan.distance, 3);
+    });
+
+    it('throws when all in-stock positions have invalid coordinates', () => {
+        const map = new Map([
+            ['product-1', [pos('negative-position', 'product-1', 1, -1)]],
+        ]);
+        assert.throws(
+            () => optimizer.findShortestPath(map, { x: 0, y: 0, z: 0 }),
+            /no positions with valid non-negative coordinates for product product-1/i,
+        );
+    });
+
+    it('rejects invalid coordinates on every axis and non-finite coordinates', () => {
+        const invalidCoordinates = [
+            { x: -1, y: 0, z: 0 },
+            { x: 0, y: -1, z: 0 },
+            { x: 0, y: 0, z: -1 },
+            { x: Number.NaN, y: 0, z: 0 },
+            { x: 0, y: Number.POSITIVE_INFINITY, z: 0 },
+            { x: 0, y: 0, z: Number.NaN },
+        ];
+
+        for (const [index, coordinates] of invalidCoordinates.entries()) {
+            const map = new Map([
+                ['product-1', [pos(`invalid-${index}`, 'product-1', coordinates.x, coordinates.y, coordinates.z)]],
+            ]);
+            assert.throws(
+                () => optimizer.findShortestPath(map, { x: 0, y: 0, z: 0 }),
+                /no positions with valid non-negative coordinates for product product-1/i,
+            );
+        }
+    });
+
     it('visits points on a line in the order they are passed', () => {
         // start at 0; product-B at 5 is between the start and product-A at 10
         const map = new Map([

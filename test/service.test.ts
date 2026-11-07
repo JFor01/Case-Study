@@ -1,6 +1,7 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { Service } from "../src/infrastructure/Service.js";
+import { Optimizer } from "../src/app/Optimizer.js";
 import type { Position } from "../src/app/dataModels/Position.js";
 import type { ProductRequest } from "../src/app/dataModels/ProductRequest.js";
 
@@ -13,7 +14,7 @@ const pos = (positionId: string, productId: string, x: number, y = 0, z = 0): Po
 
 describe("Service.optimizeRoute", () => {
     it("chooses the nearest of several positions for one product", () => {
-        const plan = new Service().optimizeRoute(request(["product-1"]), [
+        const plan = new Service(new Optimizer()).optimizeRoute(request(["product-1"]), [
             [pos("position-far", "product-1", 10), pos("position-near", "product-1", 2)],
         ]);
 
@@ -22,7 +23,7 @@ describe("Service.optimizeRoute", () => {
     });
 
     it("orders products by shortest route", () => {
-        const plan = new Service().optimizeRoute(request(["product-1", "product-2"]), [
+        const plan = new Service(new Optimizer()).optimizeRoute(request(["product-1", "product-2"]), [
             [pos("position-100", "product-1", 0, 5, 300)],
             [pos("position-200", "product-2", 32, 3, 200)],
         ]);
@@ -33,13 +34,13 @@ describe("Service.optimizeRoute", () => {
     });
 
     it("returns an empty plan when no products are requested", () => {
-        const plan = new Service().optimizeRoute(request([]), []);
+        const plan = new Service(new Optimizer()).optimizeRoute(request([]), []);
         assert.deepStrictEqual(plan, { pickingOrder: [], distance: 0 });
     });
 
     it("throws a useful error when a product has no positions", () => {
         assert.throws(
-            () => new Service().optimizeRoute(request(["product-1"]), [[]]),
+            () => new Service(new Optimizer()).optimizeRoute(request(["product-1"]), [[]]),
             /no positions returned for a product/i,
         );
     });
