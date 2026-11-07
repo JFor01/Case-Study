@@ -72,6 +72,20 @@ describe('exact route optimization', () => {
         assert.deepStrictEqual(plan.pickingOrder.map(({ productId }) => productId),
             Array.from({ length: 20 }, (_, index) => `product-${index}`));
     });
+
+    it('allows a route algorithm to be supplied through the shared interface', () => {
+        const expected = { pickingOrder: [{ productId: 'product-1', positionId: 'position-1' }], distance: 7 };
+        const customAlgorithm = {
+            canHandle: () => true,
+            findShortestPath: () => expected,
+        };
+        const optimizer = new Optimizer([customAlgorithm]);
+        const positions = new Map<string, Position[]>([
+            ['product-1', [pos('position-1', 'product-1', 7)]],
+        ]);
+
+        assert.deepStrictEqual(optimizer.findShortestPath(positions, { x: 0, y: 0, z: 0 }), expected);
+    });
 });
 
 
