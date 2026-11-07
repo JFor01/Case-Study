@@ -1,9 +1,9 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { Controller } from "../app/Controller.js";
-import type { ProductRequest } from "../app/dataModels/ProductRequest.js";
-import type { ProductResponse } from "../app/dataModels/ProductResponse.js";
-import type { Position } from "../app/dataModels/Position.js";
+import { Controller } from "../src/infrastructure/Controller.js";
+import type { ProductRequest } from "../src/app/dataModels/ProductRequest.js";
+import type { ProductResponse } from "../src/app/dataModels/ProductResponse.js";
+import type { Position } from "../src/app/dataModels/Position.js";
 
 const request: ProductRequest = {
     products: ["product 1", "product/2"],

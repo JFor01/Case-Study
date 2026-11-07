@@ -1,5 +1,5 @@
 import { createServer, type IncomingMessage, type ServerResponse, type Server } from "node:http";
-import type { ProductRequest } from "./dataModels/ProductRequest.js";
+import type { ProductRequest } from "../app/dataModels/ProductRequest.js";
 import type { Controller } from "./Controller.js";
 
 export const API_PATH = "/products";

@@ -15,7 +15,7 @@ Both strategies choose one available position for each product. Distance is the 
 
 ## Add a route algorithm
 
-1. Add a class that implements `RouteAlgorithm` from `app/algoritms/RouteAlgorithm.ts`.
+1. Add a class that implements `RouteAlgorithm` from `src`.
 2. Implement `canHandle` as a quick, read-only check. Implement `findShortestPath` for inputs the strategy accepts.
 3. Register the new instance in the `Optimizer` constructor's strategy list. The first strategy that can handle a request wins. Keep the always-available nearest-neighbor strategy last unless it should be replaced.
 

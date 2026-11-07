@@ -1,9 +1,9 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import type { AddressInfo } from "node:net";
-import { API_PATH, createApp } from "../app/Server.js";
-import type { ProductRequest } from "../app/dataModels/ProductRequest.js";
-import type { ProductResponse } from "../app/dataModels/ProductResponse.js";
+import { API_PATH, createApp } from "../src/infrastructure/Server.js";
+import type { ProductRequest } from "../src/app/dataModels/ProductRequest.js";
+import type { ProductResponse } from "../src/app/dataModels/ProductResponse.js";
 
 async function withServer<T>(handler: (request: ProductRequest) => Promise<ProductResponse> | ProductResponse, run: (baseUrl: string) => Promise<T>): Promise<T> {
     const server = createApp({ postRequest: async (request) => handler(request) });

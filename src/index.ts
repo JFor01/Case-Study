@@ -1,6 +1,6 @@
-import { Service } from "./Service.js";
-import { Controller } from "./Controller.js";
-import {createApp} from "./Server.js";
+import { Service } from "./infrastructure/Service.js";
+import { Controller } from "./infrastructure/Controller.js";
+import {createApp} from "./infrastructure/Server.js";
 
 
 const controller = new Controller(new Service(), {

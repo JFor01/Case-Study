@@ -1,7 +1,7 @@
-import type {ProductRequest} from "./dataModels/ProductRequest.js";
-import type {ProductResponse} from "./dataModels/ProductResponse.js";
-import type {Position} from "./dataModels/Position.js";
-import {Optimizer} from "./Optimizer.js";
+import type {ProductRequest} from "../app/dataModels/ProductRequest.js";
+import type {ProductResponse} from "../app/dataModels/ProductResponse.js";
+import type {Position} from "../app/dataModels/Position.js";
+import {Optimizer} from "../app/Optimizer.js";
 
 export class Service{
 

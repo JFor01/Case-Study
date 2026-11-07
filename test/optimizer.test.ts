@@ -1,8 +1,8 @@
 // picking/optimizer.test.ts
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import {Optimizer} from "../app/Optimizer.js";
-import type {Position} from "../app/dataModels/Position.js";
+import {Optimizer} from "../src/app/Optimizer.js";
+import type {Position} from "../src/app/dataModels/Position.js";
 
 function assertClose(actual: number, expected: number, tolerance = 1e-9): void {
     assert.ok(

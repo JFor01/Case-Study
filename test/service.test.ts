@@ -1,8 +1,8 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { Service } from "../app/Service.js";
-import type { Position } from "../app/dataModels/Position.js";
-import type { ProductRequest } from "../app/dataModels/ProductRequest.js";
+import { Service } from "../src/infrastructure/Service.js";
+import type { Position } from "../src/app/dataModels/Position.js";
+import type { ProductRequest } from "../src/app/dataModels/ProductRequest.js";
 
 const request = (products: string[]): ProductRequest => ({
     products,
