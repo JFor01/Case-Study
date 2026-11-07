@@ -1,9 +1,10 @@
 import { Service } from "./infrastructure/Service.js";
 import { Controller } from "./infrastructure/Controller.js";
 import {createApp} from "./infrastructure/Server.js";
+import {Optimizer} from "./app/Optimizer.js";
 
 
-const controller = new Controller(new Service(), {
+const controller = new Controller(new Service(new Optimizer()), {
     baseUrl: process.env.WAREHOUSE_API_URL ?? "https://dev.aux.boxpi.com/case-study",
     apiKey: process.env.WAREHOUSE_API_KEY ?? "",
 });

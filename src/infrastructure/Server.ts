@@ -7,22 +7,6 @@ export const API_PATH = "/products";
 
 type Handler = Pick<Controller, "postRequest">;
 
-// Objects are serialized as JSON; string bodies are sent as plain text.
-function send(res: ServerResponse, status: number, body: unknown, headers: Record<string, string> = {}): void {
-    const isText = typeof body === "string";
-    res.writeHead(status, {
-        "Content-Type": isText ? "text/plain" : "application/json",
-        ...headers,
-    });
-    res.end(isText ? body : JSON.stringify(body));
-}
-
-// Node delivers request bodies as a stream, so collect its chunks before parsing.
-async function readBody(req: IncomingMessage): Promise<string> {
-    const chunks: Buffer[] = [];
-    for await (const chunk of req) chunks.push(chunk as Buffer);
-    return Buffer.concat(chunks).toString("utf8");
-}
 
 export function createApp(controller: Handler): Server {
     return createServer(async (req: IncomingMessage, res: ServerResponse) => {
@@ -47,4 +31,21 @@ export function createApp(controller: Handler): Server {
             return send(res, 500, "Internal error\n");
         }
     });
+}
+
+// Objects are serialized as JSON; string bodies are sent as plain text.
+function send(res: ServerResponse, status: number, body: unknown, headers: Record<string, string> = {}): void {
+    const isText = typeof body === "string";
+    res.writeHead(status, {
+        "Content-Type": isText ? "text/plain" : "application/json",
+        ...headers,
+    });
+    res.end(isText ? body : JSON.stringify(body));
+}
+
+// Node delivers request bodies as a stream, so collect its chunks before parsing.
+async function readBody(req: IncomingMessage): Promise<string> {
+    const chunks: Buffer[] = [];
+    for await (const chunk of req) chunks.push(chunk as Buffer);
+    return Buffer.concat(chunks).toString("utf8");
 }
