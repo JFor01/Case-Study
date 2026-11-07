@@ -94,6 +94,21 @@ describe('findShortestPath (more cases)', () => {
     const pos = (positionId: string, productId: string, x: number, y = 0, z = 0) =>
         ({ positionId, productId, x, y, z, quantity: 1 });
 
+    it('rejects negative starting coordinates on every axis', () => {
+        const invalidStarts = [
+            { x: -1, y: 0, z: 0 },
+            { x: 0, y: -1, z: 0 },
+            { x: 0, y: 0, z: -1 },
+        ];
+
+        for (const start of invalidStarts) {
+            assert.throws(
+                () => optimizer.findShortestPath(new Map(), start),
+                /starting position coordinates must be finite, non-negative numbers/i,
+            );
+        }
+    });
+
     it('returns an empty plan when there are no products', () => {
         const plan = optimizer.findShortestPath(new Map(), { x: 0, y: 0, z: 0 });
         assert.deepStrictEqual(plan, { pickingOrder: [], distance: 0 });

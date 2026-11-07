@@ -30,7 +30,7 @@ Content-type: application/json
     "product-11", "product-12", "product-13", "product-14", "product-15",
     "product-16", "product-17", "product-18", "product-19", "product-20", "product-21"
   ],
-  "startingPosition": { "x": 0, "y": 0, "z": 0 }
+  "startingPosition": { "x": -1, "y": 0, "z": 0 }
 }
 ###
 

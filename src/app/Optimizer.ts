@@ -1,6 +1,7 @@
 import type { Point } from "./dataModels/Point.js";
 import type { Position } from "./dataModels/Position.js";
 import type { ProductResponse } from "./dataModels/ProductResponse.js";
+import { InvalidRouteRequestError } from "./InvalidRouteRequestError.js";
 import { ExactRouteAlgorithm } from "./algoritms/ExactRouteAlgorithm.js";
 import { NearestNeighborAlgorithm } from "./algoritms/NearestNeighborAlgorithm.js";
 import type { RouteAlgorithm } from "./algoritms/RouteAlgorithm.js";
@@ -18,8 +19,12 @@ export class Optimizer {
     ) {}
 
     public findShortestPath(positions: Map<string, Position[]>, start: Point): ProductResponse {
-        if (!Number.isFinite(start.x) || !Number.isFinite(start.y) || !Number.isFinite(start.z)) {
-            throw new Error("Start point coordinates must be finite numbers");
+        if (
+            !Number.isFinite(start.x) || start.x < 0 ||
+            !Number.isFinite(start.y) || start.y < 0 ||
+            !Number.isFinite(start.z) || start.z < 0
+        ) {
+            throw new InvalidRouteRequestError("Starting position coordinates must be finite, non-negative numbers");
         }
         const availablePositions = this.filterPickablePositions(positions);
         if (availablePositions.size === 0) return { pickingOrder: [], distance: 0 };

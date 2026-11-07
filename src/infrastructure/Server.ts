@@ -1,5 +1,6 @@
 import { createServer, type IncomingMessage, type ServerResponse, type Server } from "node:http";
 import type { ProductRequest } from "../app/dataModels/ProductRequest.js";
+import { InvalidRouteRequestError } from "../app/InvalidRouteRequestError.js";
 import type { Controller } from "./Controller.js";
 
 export const API_PATH = "/products";
@@ -27,6 +28,9 @@ export function createApp(controller: Handler): Server {
         try {
             return send(res, 200, await controller.postRequest(order));
         } catch (err) {
+            if (err instanceof InvalidRouteRequestError) {
+                return send(res, 400, { error: err.message });
+            }
             console.error(err);
             return send(res, 500, "Internal error\n");
         }
