@@ -1,0 +1,11 @@
+POST http://localhost:3000/products
+Content-type: application/json
+
+{"products": [ "product-1", "product-2" ], "startingPosition": { "x": 0, "y": 0, "z": 0 }}
+###
+
+
+
+GET https://dev.aux.boxpi.com/case-study/products/product-25/positions
+x-api-Key:{{apiKey}}
+
