@@ -34,6 +34,16 @@ Send a `POST` request to `/products` with this JSON shape:
 
 The response contains `pickingOrder` entries with `productId` and `positionId`, plus the total `distance`.
 
+```json
+{
+  "pickingOrder": [
+    { "productId": "product-2", "positionId": "position-202" },
+    { "productId": "product-1", "positionId": "position-103" }
+  ],
+  "distance": 54.2
+}
+```
+
 The controller loads positions from the warehouse API. Configure its URL with `WAREHOUSE_API_URL` and its key with `WAREHOUSE_API_KEY`. The default URL is the case-study development API.
 
 ## Run locally
