@@ -30,6 +30,50 @@ describe('findShortestPath', () => {
     });
 });
 
+describe('exact route optimization', () => {
+    const optimizer = new Optimizer();
+    const pos = (positionId: string, productId: string, x: number): Position =>
+        ({ positionId, productId, x, y: 0, z: 0, quantity: 1 });
+
+    it('finds a shorter route than nearest neighbour when an early greedy pick is costly', () => {
+        const at = (positionId: string, productId: string, x: number, y: number): Position =>
+            ({ positionId, productId, x, y, z: 0, quantity: 1 });
+        const positions = new Map<string, Position[]>([
+            ['product-A', [at('A', 'product-A', 6, 6), at('A-far', 'product-A', 100, 100)]],
+            ['product-B', [at('B', 'product-B', 7, 13)]],
+            ['product-C', [at('C', 'product-C', 0, 1)]],
+            ['product-D', [at('D', 'product-D', 5, 9)]],
+            ['product-E', [at('E', 'product-E', 2, 7)]],
+        ]);
+
+        const plan = optimizer.findShortestPath(positions, { x: 0, y: 0, z: 0 });
+
+        assert.deepStrictEqual(plan.pickingOrder, [
+            { productId: 'product-C', positionId: 'C' },
+            { productId: 'product-E', positionId: 'E' },
+            { productId: 'product-A', positionId: 'A' },
+            { productId: 'product-D', positionId: 'D' },
+            { productId: 'product-B', positionId: 'B' },
+        ]);
+        assertClose(plan.distance, 1 + Math.sqrt(40) + Math.sqrt(17) + Math.sqrt(10) + Math.sqrt(20));
+    });
+
+    it('uses a valid nearest-neighbour route when the exact search is too large', () => {
+        const positions = new Map<string, Position[]>();
+        for (let index = 0; index < 20; index++) {
+            const productId = `product-${index}`;
+            positions.set(productId, [pos(`position-${index}`, productId, index + 1)]);
+        }
+
+        const plan = optimizer.findShortestPath(positions, { x: 0, y: 0, z: 0 });
+
+        assert.equal(plan.pickingOrder.length, positions.size);
+        assertClose(plan.distance, 20);
+        assert.deepStrictEqual(plan.pickingOrder.map(({ productId }) => productId),
+            Array.from({ length: 20 }, (_, index) => `product-${index}`));
+    });
+});
+
 
 describe('findShortestPath (more cases)', () => {
     const optimizer = new Optimizer();
@@ -118,22 +162,25 @@ describe('findShortestPath with several products and positions', () => {
         ['product-D', [pos('position-D1', 'product-D', 0, 0, 4), pos('position-D2', 'product-D', 30, 40, 0)]],
     ]);
 
-    it('picks the nearest candidate at each step', () => {
+    it('selects one available position for every product', () => {
         const plan = optimizer.findShortestPath(positions, { x: 0, y: 0, z: 0 });
-
-        assert.deepStrictEqual(plan.pickingOrder, [
-            { productId: 'product-C', positionId: 'position-C1' },
-            { productId: 'product-D', positionId: 'position-D1' },
-            { productId: 'product-A', positionId: 'position-A2' },
-            { productId: 'product-B', positionId: 'position-B1' },
-        ]);
+        assert.equal(plan.pickingOrder.length, positions.size);
+        for (const pick of plan.pickingOrder) {
+            assert.equal(positions.get(pick.productId)?.some((position) => position.positionId === pick.positionId), true);
+        }
     });
 
-    it('sums the legs from the start, with no return leg', () => {
+    it('reports the route distance without adding a return leg', () => {
         const plan = optimizer.findShortestPath(positions, { x: 0, y: 0, z: 0 });
-
-        // origin->C1 = 1, C1->D1 = sqrt(17), D1->A2 = sqrt(41), A2->B1 = 5
-        assertClose(plan.distance, 1 + Math.sqrt(17) + Math.sqrt(41) + 5);
+        const route = [
+            { x: 0, y: 0, z: 0 },
+            ...plan.pickingOrder.map((pick) => positions.get(pick.productId)!.find((position) => position.positionId === pick.positionId)!),
+        ];
+        const distance = route.slice(1).reduce((total, point, index) => {
+            const previous = route[index]!;
+            return total + Math.hypot(point.x - previous.x, point.y - previous.y, point.z - previous.z);
+        }, 0);
+        assertClose(plan.distance, distance);
     });
 
     it('picks each product exactly once', () => {

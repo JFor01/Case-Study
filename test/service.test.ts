@@ -21,7 +21,7 @@ describe("Service.optimizeRoute", () => {
         assert.ok(Math.abs(plan.distance - 2) < 1e-9);
     });
 
-    it("orders products by nearest neighbour", () => {
+    it("orders products by shortest route", () => {
         const plan = new Service().optimizeRoute(request(["product-1", "product-2"]), [
             [pos("position-100", "product-1", 0, 5, 300)],
             [pos("position-200", "product-2", 32, 3, 200)],

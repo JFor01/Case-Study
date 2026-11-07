@@ -3,16 +3,15 @@ import type {ProductResponse} from "./dataModels/ProductResponse.js";
 import type {Position} from "./dataModels/Position.js";
 import {Optimizer} from "./Optimizer.js";
 
-
 export class Service{
 
 
-    public optimizeRoute(req : ProductRequest, productPositions : Position[][]):ProductResponse{
+    public optimizeRoute(req : ProductRequest, productPositions : Position[][]): ProductResponse{
         const optimizer = new Optimizer();
         //use hashMap for efficient index search
         const positionsMap = new Map<string, Position[]>();
         for (const positions of productPositions) this.mapEntry(positions, positionsMap);
-        return optimizer.findShortestPath(positionsMap,req.startingPosition);
+        return optimizer.findShortestPath(positionsMap, req.startingPosition);
 
     }
 
