@@ -1,79 +1,45 @@
+import { createServer, type IncomingMessage, type ServerResponse, type Server } from "node:http";
+import type { ProductRequest } from "./dataModels/ProductRequest.js";
+import type { Controller } from "./Controller.js";
 
-import {createServer, type IncomingMessage, type ServerResponse} from 'node:http';
-import {Service} from "./Service.js";
-import {Controller} from "./Controller.js";
-import {json} from "node:stream/consumers";
-import type {ProductRequest} from "./dataModels/ProductRequest.js";
-import {Optimizer} from "./Optimizer.js";
+export const API_PATH = "/products";
 
-const API_PATH = "/products";
+type Handler = Pick<Controller, "postRequest">;
 
+function send(res: ServerResponse, status: number, body: unknown, headers: Record<string, string> = {}): void {
+    const isText = typeof body === "string";
+    res.writeHead(status, {
+        "Content-Type": isText ? "text/plain" : "application/json",
+        ...headers,
+    });
+    res.end(isText ? body : JSON.stringify(body));
+}
 
-//dependency injection wiring on globals
-const optimizer = new Optimizer();
-const service = new Service(optimizer);
-const controller = new Controller(service);
+async function readBody(req: IncomingMessage): Promise<string> {
+    const chunks: Buffer[] = [];
+    for await (const chunk of req) chunks.push(chunk as Buffer);
+    return Buffer.concat(chunks).toString("utf8");
+}
 
-const server = createServer((req :IncomingMessage , res:ServerResponse ) =>
-{
+export function createApp(controller: Handler): Server {
+    return createServer(async (req: IncomingMessage, res: ServerResponse) => {
+        if (req.url !== API_PATH) return send(res, 404, "Page not found\n");
+        if (req.method !== "POST") {
+            return send(res, 405, "This server accepts only a POST method\n", { Allow: "POST" });
+        }
 
-    //reject an incorrect URL
-    if(req.url !== API_PATH){
-        res.writeHead(404,{
-            'Content-Type' : 'text/plain'
-        })
-        res.end('Page not found\n');
-        return;
-    }
+        let order: ProductRequest;
+        try {
+            order = JSON.parse(await readBody(req)) as ProductRequest;
+        } catch {
+            return send(res, 400, "Invalid JSON\n");
+        }
 
-    //reject everything that's not a POST
-    if(req.method !== 'POST'){
-        res.writeHead(405,{
-            'Allow': 'POST',
-            'Content-Type': 'text/plain'
-        })
-        res.end('This server accepts only a POST method\n');
-        return;
-    }
-
-    //process the request
-    const buffer : Buffer[]  = [];
-
-    req.
-        on('data',(chunk : unknown) => {
-            if(chunk instanceof Buffer)buffer.push(chunk);
-            else{
-                res.writeHead(400, {'Content-Type' : 'text-plain'});
-                res.end("Invalid request encoding")
-                return;
-            }
-        })
-        .on("end", () => {
-            const data = buffer.concat().toString();
-
-            try{
-               const parsedData = JSON.parse(data) as ProductRequest;
-               controller.postRequest(parsedData).then((data) => {
-                   res.writeHead(200, {'Content-Type' : 'application/json' });
-                   res.end(JSON.stringify(data));});
-
-            }
-            catch {
-                res.writeHead(400, {'Content-Type' : 'text/plain'});
-                res.end('Invalid JSON\n');
-                return;
-                
-            }
-
-        })
-        .on('error', (err) => {
-            res.writeHead(400, {'Content-Type': 'text/plain'});
-            res.end("Error\n");
-        })
-});
-
-
-server.listen(3000, '127.0.0.1', () => {
-    console.log('Listening on 127.0.0.1:3000');
-});
-
+        try {
+            return send(res, 200, await controller.postRequest(order));
+        } catch (err) {
+            console.error(err);
+            return send(res, 500, "Internal error\n");
+        }
+    });
+}
