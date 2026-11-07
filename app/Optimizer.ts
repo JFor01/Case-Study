@@ -5,7 +5,10 @@ import { ExactRouteAlgorithm } from "./algoritms/ExactRouteAlgorithm.js";
 import { NearestNeighborAlgorithm } from "./algoritms/NearestNeighborAlgorithm.js";
 import type { RouteAlgorithm } from "./algoritms/RouteAlgorithm.js";
 
-/** Selects a route algorithm while keeping one public entry point for callers. */
+/**
+ * Selects a route strategy while keeping one public entry point for callers.
+ * Strategies run in array order, so keep the nearest-neighbor fallback last.
+ */
 export class Optimizer {
     constructor(
         private readonly algorithms: readonly RouteAlgorithm[] = [
@@ -23,7 +26,7 @@ export class Optimizer {
         }
         if (positions.size === 0) return { pickingOrder: [], distance: 0 };
 
-        // Algorithms are checked in order: exact first, then the always-available fallback.
+        // Use the first suitable strategy: exact search first, then nearest neighbor.
         const algorithm = this.algorithms.find((candidate) => candidate.canHandle(positions));
         if (!algorithm) throw new Error("No route algorithm can handle this request");
         return algorithm.findShortestPath(positions, start);
