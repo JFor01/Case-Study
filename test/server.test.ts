@@ -44,6 +44,39 @@ describe("HTTP server", () => {
         });
     });
 
+    it("rejects a request whose products field is not a string array", async () => {
+        let controllerCalled = false;
+        await withServer(() => {
+            controllerCalled = true;
+            return { pickingOrder: [], distance: 0 };
+        }, async (baseUrl) => {
+            const response = await fetch(`${baseUrl}${API_PATH}`, {
+                method: "POST",
+                headers: { "content-type": "application/json", connection: "close" },
+                body: JSON.stringify({ products: [1], startingPosition: { x: 0, y: 0, z: 0 } }),
+            });
+            assert.equal(response.status, 400);
+            assert.deepStrictEqual(await response.json(), {
+                error: "products must be an array of non-empty strings",
+            });
+            assert.equal(controllerCalled, false);
+        });
+    });
+
+    it("rejects a request with missing starting coordinates", async () => {
+        await withServer(() => ({ pickingOrder: [], distance: 0 }), async (baseUrl) => {
+            const response = await fetch(`${baseUrl}${API_PATH}`, {
+                method: "POST",
+                headers: { "content-type": "application/json", connection: "close" },
+                body: JSON.stringify({ products: [], startingPosition: { x: 0, y: 0 } }),
+            });
+            assert.equal(response.status, 400);
+            assert.deepStrictEqual(await response.json(), {
+                error: "startingPosition coordinates must be finite, non-negative numbers",
+            });
+        });
+    });
+
     it("returns 404 for an unknown path", async () => {
         await withServer(() => ({ pickingOrder: [], distance: 0 }), async (baseUrl) => {
             const response = await fetch(`${baseUrl}/unknown`, { headers: { connection: "close" } });
@@ -77,14 +110,14 @@ describe("HTTP server", () => {
         }
     });
 
-    it("returns a precise 400 response for invalid route input", async () => {
+    it("returns a precise 400 response for a typed route error", async () => {
         await withServer(() => {
             throw new InvalidRouteRequestError("Starting position coordinates must be finite, non-negative numbers");
         }, async (baseUrl) => {
             const response = await fetch(`${baseUrl}${API_PATH}`, {
                 method: "POST",
                 headers: { "content-type": "application/json", connection: "close" },
-                body: JSON.stringify({ products: ["product-1"], startingPosition: { x: -1, y: 0, z: 0 } }),
+                body: JSON.stringify({ products: ["product-1"], startingPosition: { x: 0, y: 0, z: 0 } }),
             });
             assert.equal(response.status, 400);
             assert.match(response.headers.get("content-type") ?? "", /application\/json/);
