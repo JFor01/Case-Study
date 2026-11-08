@@ -4,7 +4,7 @@ import type { Position } from "../app/dataModels/Position.js";
 import type { Service } from "./Service.js";
 
 export interface ControllerConfig {
-    baseUrl: string; // e.g. https://dev.aux.boxpi.com/case-study
+    baseUrl: string; // this is to mainly handle quick switches from mock to real endpoint
     apiKey: string;
 }
 

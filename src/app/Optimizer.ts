@@ -19,6 +19,7 @@ export class Optimizer {
     ) {}
 
     public findShortestPath(positions: Map<string, Position[]>, start: Point): ProductResponse {
+        //check if starting position is realistic
         if (
             !Number.isFinite(start.x) || start.x < 0 ||
             !Number.isFinite(start.y) || start.y < 0 ||
@@ -26,6 +27,7 @@ export class Optimizer {
         ) {
             throw new InvalidRouteRequestError("Starting position coordinates must be finite, non-negative numbers");
         }
+        //check that each product has at least one realistic position, including realistic quantities
         const availablePositions = this.filterPickablePositions(positions);
         if (availablePositions.size === 0) return { pickingOrder: [], distance: 0 };
 

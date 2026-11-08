@@ -37,7 +37,7 @@ export function createApp(controller: Handler): Server {
             throw err;
         }
 
-        // calculate a route. Unexpected errors become a generic server error.
+        // calculate a route, this is what handles the actual logic
         try {
             return send(res, 200, await controller.postRequest(order));
         } catch (err) {
