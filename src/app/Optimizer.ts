@@ -27,7 +27,7 @@ export class Optimizer {
         ) {
             throw new InvalidRouteRequestError("Starting position coordinates must be finite, non-negative numbers");
         }
-        //check that each product has at least one realistic position, including realistic quantities
+        //filter for realistic positions, including realistic quantities
         const availablePositions = this.filterPickablePositions(positions);
         if (availablePositions.size === 0) return { pickingOrder: [], distance: 0 };
 
