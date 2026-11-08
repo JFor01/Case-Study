@@ -50,7 +50,7 @@ export function createApp(controller: Handler): Server {
     });
 }
 
-// Objects are serialized as JSON; string bodies are sent as plain text.
+// serialize JSON objects,send strings as a plain text.
 function send(res: ServerResponse, status: number, body: unknown, headers: Record<string, string> = {}): void {
     const isText = typeof body === "string";
     res.writeHead(status, {
