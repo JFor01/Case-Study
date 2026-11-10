@@ -6,8 +6,10 @@ import type { Controller } from "./Controller.js";
 import {ForbiddenError} from "../app/ForbiddenError.js";
 
 export const API_PATH = "/products";
+const MAX_BODY_BYTES = 1_048_576;
 
 type Handler = Pick<Controller, "postRequest">;
+class RequestBodyTooLargeError extends Error {}
 
 function isRecord(value: unknown): value is Record<string, unknown> {
     return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -21,11 +23,14 @@ export function createApp(controller: Handler): Server {
         if (req.method !== "POST") {
             return send(res, 405, "This server accepts only a POST method\n", { Allow: "POST" });
         }
-        // Invalid JSON is a client error and must not reach the controller.
+        // Handle invalid JSON.
         let requestBody: unknown;
         try {
             requestBody = JSON.parse(await readBody(req)) as unknown;
-        } catch {
+        } catch (error) {
+            if (error instanceof RequestBodyTooLargeError) {
+                return send(res, 413, "Request body too large\n");
+            }
             return send(res, 400, "Invalid JSON\n");
         }
         //validate the input body
@@ -71,7 +76,13 @@ function send(res: ServerResponse, status: number, body: unknown, headers: Recor
 // Node delivers request bodies as a stream, so collect its chunks before parsing.
 async function readBody(req: IncomingMessage): Promise<string> {
     const chunks: Buffer[] = [];
-    for await (const chunk of req) chunks.push(chunk as Buffer);
+    let totalBytes = 0;
+    for await (const chunk of req) {
+        const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+        totalBytes += buffer.length;
+        if (totalBytes > MAX_BODY_BYTES) throw new RequestBodyTooLargeError();
+        chunks.push(buffer);
+    }
     return Buffer.concat(chunks).toString("utf8");
 }
 

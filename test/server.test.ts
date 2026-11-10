@@ -45,6 +45,18 @@ describe("HTTP server", () => {
         });
     });
 
+    it("returns 413 when the request body exceeds the size limit", async () => {
+        await withServer(() => ({ pickingOrder: [], distance: 0 }), async (baseUrl) => {
+            const response = await fetch(`${baseUrl}${API_PATH}`, {
+                method: "POST",
+                headers: { "content-type": "application/json", connection: "close" },
+                body: JSON.stringify({ products: ["x".repeat(1_100_000)], startingPosition: { x: 0, y: 0, z: 0 } }),
+            });
+            assert.equal(response.status, 413);
+            assert.equal(await response.text(), "Request body too large\n");
+        });
+    });
+
     it("rejects a request whose products field is not a string array", async () => {
         let controllerCalled = false;
         await withServer(() => {
