@@ -13,8 +13,8 @@ const pos = (positionId: string, productId: string, x: number, y = 0, z = 0): Po
     ({ positionId, productId, x, y, z, quantity: 1 });
 
 describe("Service.optimizeRoute", () => {
-    it("chooses the nearest of several positions for one product", () => {
-        const plan = new Service(new Optimizer()).optimizeRoute(request(["product-1"]), [
+    it("chooses the nearest of several positions for one product", async () => {
+        const plan = await new Service(new Optimizer()).optimizeRoute(request(["product-1"]), [
             [pos("position-far", "product-1", 10), pos("position-near", "product-1", 2)],
         ]);
 
@@ -22,8 +22,8 @@ describe("Service.optimizeRoute", () => {
         assert.ok(Math.abs(plan.distance - 2) < 1e-9);
     });
 
-    it("orders products by shortest route", () => {
-        const plan = new Service(new Optimizer()).optimizeRoute(request(["product-1", "product-2"]), [
+    it("orders products by shortest route", async () => {
+        const plan = await new Service(new Optimizer()).optimizeRoute(request(["product-1", "product-2"]), [
             [pos("position-100", "product-1", 0, 5, 300)],
             [pos("position-200", "product-2", 32, 3, 200)],
         ]);
@@ -33,15 +33,25 @@ describe("Service.optimizeRoute", () => {
         assert.ok(Math.abs(plan.distance - expected) < 1e-9);
     });
 
-    it("returns an empty plan when no products are requested", () => {
-        const plan = new Service(new Optimizer()).optimizeRoute(request([]), []);
+    it("returns an empty plan when no products are requested", async () => {
+        const plan = await new Service(new Optimizer()).optimizeRoute(request([]), []);
         assert.deepStrictEqual(plan, { pickingOrder: [], distance: 0 });
     });
 
-    it("throws a useful error when a product has no positions", () => {
-        assert.throws(
-            () => new Service(new Optimizer()).optimizeRoute(request(["product-1"]), [[]]),
+    it("throws a useful error when a product has no positions", async () => {
+        await assert.rejects(
+            new Service(new Optimizer()).optimizeRoute(request(["product-1"]), [[]]),
             /no pickable position is available for product "product-1"/i,
         );
+    });
+
+    it("keeps the requested product ID when warehouse data has a mismatched ID", async () => {
+        const plan = await new Service(new Optimizer()).optimizeRoute(request(["requested-product"]), [[
+            pos("position-1", "different-product", 3),
+        ]]);
+
+        assert.deepStrictEqual(plan.pickingOrder, [
+            { productId: "requested-product", positionId: "position-1" },
+        ]);
     });
 });

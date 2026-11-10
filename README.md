@@ -13,6 +13,17 @@ npm start
 ```
 For using this, you need to provide your API key in the environment variable `X_API_KEY`, otherwise the
 warehouse server will respond with **403**.
+
+Set `WAREHOUSE_API_URL` to point at another warehouse endpoint, such as a local mock. Requests are limited
+to 100 unique products, and warehouse calls are made with a timeout and bounded concurrency.
+
+Run the tests with:
+
+```sh
+npm test
+```
+
+The server listens on `127.0.0.1:3000`. Example requests are in `http/post-products.http`.
 ## HTTP API
 
 Send a `POST` request to `/products` with this JSON shape:
@@ -42,7 +53,7 @@ The response contains `pickingOrder` entries with `productId` and `positionId`, 
 
 The default order is:
 
-1. `ExactRouteAlgorithm` uses dynamic programming to find the shortest route. It declines requests that exceed its state or transition limits.
+1. `ExactRouteAlgorithm` uses dynamic programming to find the shortest route. Its calculation runs in a short-lived Node worker thread, so it does not block the HTTP server's event loop. It declines requests that exceed its state or transition limits.
 2. `NearestNeighborAlgorithm` is the fallback. It is fast and handles any request, but it does not guarantee the globally shortest route.
 
 Both strategies choose one available position for each product. Distance is the sum of 3D legs from the starting point through the picks; the route does not return to the start.
@@ -50,7 +61,7 @@ Both strategies choose one available position for each product. Distance is the 
 ## Add a route algorithm
 
 1. Add a class that implements `RouteAlgorithm` from `src`.
-2. Implement `canHandle` as a quick, read-only check. Implement `findShortestPath` for inputs the strategy accepts.
+2. Implement `canHandle` as a quick, read-only check. Implement asynchronous `findShortestPath` for inputs the strategy accepts.
 3. Register the new instance in the `Optimizer` constructor's strategy list. The first strategy that can handle a request wins. Keep the always-available nearest-neighbor strategy last unless it should be replaced.
 
 You can also pass a custom strategy list to `new Optimizer([...])`.

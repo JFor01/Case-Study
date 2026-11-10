@@ -7,8 +7,7 @@
   "type": "module",
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "start": "npm run typecheck && tsx --env-file=.env src/index.ts",
-    "dev:mock": "WAREHOUSE_API_URL=http://127.0.0.1:4000/case-study tsx watch src/index.ts",
+    "start": "npm run typecheck && tsx --env-file-if-exists=.env src/index.ts",
     "test": "node --import tsx --test test/*.test.ts"
   }
 }

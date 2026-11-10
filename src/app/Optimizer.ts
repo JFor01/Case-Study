@@ -1,11 +1,12 @@
 import type { Point } from "./dataModels/Point.js";
 import type { Position } from "./dataModels/Position.js";
 import type { ProductResponse } from "./dataModels/ProductResponse.js";
-import { InvalidRouteRequestError } from "./InvalidRouteRequestError.js";
-import { ExactRouteAlgorithm } from "./algoritms/ExactRouteAlgorithm.js";
-import { NearestNeighborAlgorithm } from "./algoritms/NearestNeighborAlgorithm.js";
+import { InvalidRouteRequestError } from "./errors/InvalidRouteRequestError.js";
+import { ExactRouteAlgorithm } from "./algoritms/exactRoute/ExactRouteAlgorithm.js";
+import { NearestNeighborAlgorithm } from "./algoritms/nearestNeighbor/NearestNeighborAlgorithm.js";
 import type { RouteAlgorithm } from "./algoritms/RouteAlgorithm.js";
-import { ProductUnavailableError } from "./ProductUnavailableError.js";
+import { ProductUnavailableError } from "./errors/ProductUnavailableError.js";
+import { ExactRouteTimeoutError } from "./algoritms/exactRoute/ExactRouteTimeoutError.js";
 
 /**
  * Selects a route strategy while keeping one public entry point for callers.
@@ -19,7 +20,7 @@ export class Optimizer {
         ],
     ) {}
 
-    public findShortestPath(positions: Map<string, Position[]>, start: Point): ProductResponse {
+    public async findShortestPath(positions: Map<string, Position[]>, start: Point): Promise<ProductResponse> {
         //check if starting position is realistic
         if (
             !Number.isFinite(start.x) || start.x < 0 ||
@@ -33,9 +34,18 @@ export class Optimizer {
         if (availablePositions.size === 0) return { pickingOrder: [], distance: 0 };
 
         // Use the first suitable strategy: exact search first, then nearest neighbor.
-        const algorithm = this.algorithms.find((candidate) => candidate.canHandle(availablePositions));
-        if (!algorithm) throw new Error("No route algorithm can handle this request");
-        return algorithm.findShortestPath(availablePositions, start);
+        const suitableAlgorithms = this.algorithms.filter((candidate) => candidate.canHandle(availablePositions));
+        if (suitableAlgorithms.length === 0) throw new Error("No route algorithm can handle this request");
+
+        for (const algorithm of suitableAlgorithms) {
+            try {
+                return await algorithm.findShortestPath(availablePositions, start);
+            } catch (error) {
+                if (!(error instanceof ExactRouteTimeoutError)) throw error;
+            }
+        }
+
+        throw new Error("No route algorithm completed this request");
     }
 
     private filterPickablePositions(positions: Map<string, Position[]>): Map<string, Position[]> {

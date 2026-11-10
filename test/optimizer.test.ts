@@ -13,13 +13,13 @@ function assertClose(actual: number, expected: number, tolerance = 1e-9): void {
 
 describe('findShortestPath', () => {
     const optimizer :Optimizer = new Optimizer();
-    it('orders two products by distance from the start', () => {
+    it('orders two products by distance from the start', async () => {
         const map = new Map([
             ['product-1', [{ positionId: 'position-100', x: 0, y: 5, z: 300, productId: 'product-1', quantity: 10 }]],
             ['product-2', [{ positionId: 'position-200', x: 32, y: 3, z: 200, productId: 'product-2', quantity: 2 }]],
         ]);
 
-        const plan = optimizer.findShortestPath(map, { x: 0, y: 0, z: 0 });
+        const plan = await optimizer.findShortestPath(map, { x: 0, y: 0, z: 0 });
 
         assert.deepStrictEqual(plan.pickingOrder, [
             { productId: 'product-2', positionId: 'position-200' },
@@ -35,7 +35,7 @@ describe('exact route optimization', () => {
     const pos = (positionId: string, productId: string, x: number): Position =>
         ({ positionId, productId, x, y: 0, z: 0, quantity: 1 });
 
-    it('finds a shorter route than nearest neighbour when an early greedy pick is costly', () => {
+    it('finds a shorter route than nearest neighbour when an early greedy pick is costly', async () => {
         const at = (positionId: string, productId: string, x: number, y: number): Position =>
             ({ positionId, productId, x, y, z: 0, quantity: 1 });
         const positions = new Map<string, Position[]>([
@@ -46,7 +46,7 @@ describe('exact route optimization', () => {
             ['product-E', [at('E', 'product-E', 2, 7)]],
         ]);
 
-        const plan = optimizer.findShortestPath(positions, { x: 0, y: 0, z: 0 });
+        const plan = await optimizer.findShortestPath(positions, { x: 0, y: 0, z: 0 });
 
         assert.deepStrictEqual(plan.pickingOrder, [
             { productId: 'product-C', positionId: 'C' },
@@ -58,14 +58,14 @@ describe('exact route optimization', () => {
         assertClose(plan.distance, 1 + Math.sqrt(40) + Math.sqrt(17) + Math.sqrt(10) + Math.sqrt(20));
     });
 
-    it('uses a valid nearest-neighbour route when the exact search is too large', () => {
+    it('uses a valid nearest-neighbour route when the exact search is too large', async () => {
         const positions = new Map<string, Position[]>();
         for (let index = 0; index < 20; index++) {
             const productId = `product-${index}`;
             positions.set(productId, [pos(`position-${index}`, productId, index + 1)]);
         }
 
-        const plan = optimizer.findShortestPath(positions, { x: 0, y: 0, z: 0 });
+        const plan = await optimizer.findShortestPath(positions, { x: 0, y: 0, z: 0 });
 
         assert.equal(plan.pickingOrder.length, positions.size);
         assertClose(plan.distance, 20);
@@ -73,18 +73,18 @@ describe('exact route optimization', () => {
             Array.from({ length: 20 }, (_, index) => `product-${index}`));
     });
 
-    it('allows a route algorithm to be supplied through the shared interface', () => {
+    it('allows a route algorithm to be supplied through the shared interface', async () => {
         const expected = { pickingOrder: [{ productId: 'product-1', positionId: 'position-1' }], distance: 7 };
         const customAlgorithm = {
             canHandle: () => true,
-            findShortestPath: () => expected,
+            findShortestPath: async () => expected,
         };
         const optimizer = new Optimizer([customAlgorithm]);
         const positions = new Map<string, Position[]>([
             ['product-1', [pos('position-1', 'product-1', 7)]],
         ]);
 
-        assert.deepStrictEqual(optimizer.findShortestPath(positions, { x: 0, y: 0, z: 0 }), expected);
+        assert.deepStrictEqual(await optimizer.findShortestPath(positions, { x: 0, y: 0, z: 0 }), expected);
     });
 });
 
@@ -94,7 +94,7 @@ describe('findShortestPath (more cases)', () => {
     const pos = (positionId: string, productId: string, x: number, y = 0, z = 0) =>
         ({ positionId, productId, x, y, z, quantity: 1 });
 
-    it('rejects negative starting coordinates on every axis', () => {
+    it('rejects negative starting coordinates on every axis', async () => {
         const invalidStarts = [
             { x: -1, y: 0, z: 0 },
             { x: 0, y: -1, z: 0 },
@@ -102,36 +102,36 @@ describe('findShortestPath (more cases)', () => {
         ];
 
         for (const start of invalidStarts) {
-            assert.throws(
-                () => optimizer.findShortestPath(new Map(), start),
+            await assert.rejects(
+                optimizer.findShortestPath(new Map(), start),
                 /starting position coordinates must be finite, non-negative numbers/i,
             );
         }
     });
 
-    it('returns an empty plan when there are no products', () => {
-        const plan = optimizer.findShortestPath(new Map(), { x: 0, y: 0, z: 0 });
+    it('returns an empty plan when there are no products', async () => {
+        const plan = await optimizer.findShortestPath(new Map(), { x: 0, y: 0, z: 0 });
         assert.deepStrictEqual(plan, { pickingOrder: [], distance: 0 });
     });
 
-    it('measures a single pick in 3D', () => {
+    it('measures a single pick in 3D', async () => {
         const map = new Map([['product-1', [pos('position-1', 'product-1', 1, 2, 2)]]]);
-        const plan = optimizer.findShortestPath(map, { x: 0, y: 0, z: 0 });
+        const plan = await optimizer.findShortestPath(map, { x: 0, y: 0, z: 0 });
         assertClose(plan.distance, 3);
     });
 
-    it('chooses the closest of several positions for a single product', () => {
+    it('chooses the closest of several positions for a single product', async () => {
         const map = new Map([
             ['product-1', [pos('position-far', 'product-1', 10), pos('position-near', 'product-1', 2)]],
         ]);
-        const plan = optimizer.findShortestPath(map, { x: 0, y: 0, z: 0 });
+        const plan = await optimizer.findShortestPath(map, { x: 0, y: 0, z: 0 });
         assert.deepStrictEqual(plan.pickingOrder, [
             { productId: 'product-1', positionId: 'position-near' },
         ]);
         assertClose(plan.distance, 2);
     });
 
-    it('ignores positions with no available quantity', () => {
+    it('ignores positions with no available quantity', async () => {
         const map = new Map([
             ['product-1', [
                 { ...pos('empty-position', 'product-1', 1), quantity: 0 },
@@ -139,7 +139,7 @@ describe('findShortestPath (more cases)', () => {
             ]],
         ]);
 
-        const plan = optimizer.findShortestPath(map, { x: 0, y: 0, z: 0 });
+        const plan = await optimizer.findShortestPath(map, { x: 0, y: 0, z: 0 });
 
         assert.deepStrictEqual(plan.pickingOrder, [
             { productId: 'product-1', positionId: 'available-position' },
@@ -147,30 +147,30 @@ describe('findShortestPath (more cases)', () => {
         assert.equal(plan.distance, 5);
     });
 
-    it('throws when every position for a product is out of stock', () => {
+    it('throws when every position for a product is out of stock', async () => {
         const map = new Map([
             ['product-1', [{ ...pos('empty-position', 'product-1', 1), quantity: 0 }]],
         ]);
-        assert.throws(
-            () => optimizer.findShortestPath(map, { x: 0, y: 0, z: 0 }),
+        await assert.rejects(
+            optimizer.findShortestPath(map, { x: 0, y: 0, z: 0 }),
             /no pickable position is available for product "product-1"/i,
         );
     });
 
-    it('rejects quantities below one and non-finite quantities', () => {
+    it('rejects quantities below one and non-finite quantities', async () => {
         const unavailableQuantities = [0.5, -1, Number.NaN, Number.POSITIVE_INFINITY];
         for (const [index, quantity] of unavailableQuantities.entries()) {
             const map = new Map([
                 ['product-1', [{ ...pos(`unavailable-${index}`, 'product-1', 1), quantity }]],
             ]);
-            assert.throws(
-                () => optimizer.findShortestPath(map, { x: 0, y: 0, z: 0 }),
+            await assert.rejects(
+                optimizer.findShortestPath(map, { x: 0, y: 0, z: 0 }),
                 /no pickable position is available for product "product-1"/i,
             );
         }
     });
 
-    it('ignores positions with negative coordinates', () => {
+    it('ignores positions with negative coordinates', async () => {
         const map = new Map([
             ['product-1', [
                 pos('negative-position', 'product-1', -1),
@@ -178,7 +178,7 @@ describe('findShortestPath (more cases)', () => {
             ]],
         ]);
 
-        const plan = optimizer.findShortestPath(map, { x: 0, y: 0, z: 0 });
+        const plan = await optimizer.findShortestPath(map, { x: 0, y: 0, z: 0 });
 
         assert.deepStrictEqual(plan.pickingOrder, [
             { productId: 'product-1', positionId: 'valid-position' },
@@ -186,17 +186,17 @@ describe('findShortestPath (more cases)', () => {
         assert.equal(plan.distance, 3);
     });
 
-    it('throws when all in-stock positions have invalid coordinates', () => {
+    it('throws when all in-stock positions have invalid coordinates', async () => {
         const map = new Map([
             ['product-1', [pos('negative-position', 'product-1', 1, -1)]],
         ]);
-        assert.throws(
-            () => optimizer.findShortestPath(map, { x: 0, y: 0, z: 0 }),
+        await assert.rejects(
+            optimizer.findShortestPath(map, { x: 0, y: 0, z: 0 }),
             /no pickable position is available for product "product-1"/i,
         );
     });
 
-    it('rejects invalid coordinates on every axis and non-finite coordinates', () => {
+    it('rejects invalid coordinates on every axis and non-finite coordinates', async () => {
         const invalidCoordinates = [
             { x: -1, y: 0, z: 0 },
             { x: 0, y: -1, z: 0 },
@@ -210,41 +210,41 @@ describe('findShortestPath (more cases)', () => {
             const map = new Map([
                 ['product-1', [pos(`invalid-${index}`, 'product-1', coordinates.x, coordinates.y, coordinates.z)]],
             ]);
-            assert.throws(
-                () => optimizer.findShortestPath(map, { x: 0, y: 0, z: 0 }),
+            await assert.rejects(
+                optimizer.findShortestPath(map, { x: 0, y: 0, z: 0 }),
                 /no pickable position is available for product "product-1"/i,
             );
         }
     });
 
-    it('visits points on a line in the order they are passed', () => {
+    it('visits points on a line in the order they are passed', async () => {
         // start at 0; product-B at 5 is between the start and product-A at 10
         const map = new Map([
             ['product-A', [pos('position-A', 'product-A', 10)]],
             ['product-B', [pos('position-B', 'product-B', 5)]],
         ]);
-        const plan = optimizer.findShortestPath(map, { x: 0, y: 0, z: 0 });
+        const plan = await optimizer.findShortestPath(map, { x: 0, y: 0, z: 0 });
         assert.deepStrictEqual(plan.pickingOrder.map((p) => p.productId), ['product-B', 'product-A']);
         assertClose(plan.distance, 10);
     });
 
-    it('picks each requested product exactly once', () => {
+    it('picks each requested product exactly once', async () => {
         const map = new Map([
             ['product-1', [pos('position-1a', 'product-1', 1), pos('position-1b', 'product-1', 9)]],
             ['product-2', [pos('position-2a', 'product-2', 4), pos('position-2b', 'product-2', 8)]],
             ['product-3', [pos('position-3a', 'product-3', 3)]],
         ]);
-        const plan = optimizer.findShortestPath(map, { x: 0, y: 0, z: 0 });
+        const plan = await optimizer.findShortestPath(map, { x: 0, y: 0, z: 0 });
         const productIds = plan.pickingOrder.map((p) => p.productId).sort();
         assert.deepStrictEqual(productIds, ['product-1', 'product-2', 'product-3']);
     });
 
-    it('uses a position that belongs to the product it was chosen for', () => {
+    it('uses a position that belongs to the product it was chosen for', async () => {
         const map = new Map([
             ['product-1', [pos('position-1', 'product-1', 2)]],
             ['product-2', [pos('position-2', 'product-2', 4)]],
         ]);
-        const plan = optimizer.findShortestPath(map, { x: 0, y: 0, z: 0 });
+        const plan = await optimizer.findShortestPath(map, { x: 0, y: 0, z: 0 });
         for (const step of plan.pickingOrder) {
             assert.equal(map.get(step.productId)?.some((p) => p.positionId === step.positionId), true);
         }
@@ -277,16 +277,16 @@ describe('findShortestPath with several products and positions', () => {
         ['product-D', [pos('position-D1', 'product-D', 0, 0, 4), pos('position-D2', 'product-D', 30, 40, 0)]],
     ]);
 
-    it('selects one available position for every product', () => {
-        const plan = optimizer.findShortestPath(positions, { x: 0, y: 0, z: 0 });
+    it('selects one available position for every product', async () => {
+        const plan = await optimizer.findShortestPath(positions, { x: 0, y: 0, z: 0 });
         assert.equal(plan.pickingOrder.length, positions.size);
         for (const pick of plan.pickingOrder) {
             assert.equal(positions.get(pick.productId)?.some((position) => position.positionId === pick.positionId), true);
         }
     });
 
-    it('reports the route distance without adding a return leg', () => {
-        const plan = optimizer.findShortestPath(positions, { x: 0, y: 0, z: 0 });
+    it('reports the route distance without adding a return leg', async () => {
+        const plan = await optimizer.findShortestPath(positions, { x: 0, y: 0, z: 0 });
         const route = [
             { x: 0, y: 0, z: 0 },
             ...plan.pickingOrder.map((pick) => positions.get(pick.productId)!.find((position) => position.positionId === pick.positionId)!),
@@ -298,19 +298,19 @@ describe('findShortestPath with several products and positions', () => {
         assertClose(plan.distance, distance);
     });
 
-    it('picks each product exactly once', () => {
-        const plan = optimizer.findShortestPath(positions, { x: 0, y: 0, z: 0 });
+    it('picks each product exactly once', async () => {
+        const plan = await optimizer.findShortestPath(positions, { x: 0, y: 0, z: 0 });
         const productIds = plan.pickingOrder.map((p) => p.productId).sort();
 
         assert.deepStrictEqual(productIds, ['product-A', 'product-B', 'product-C', 'product-D']);
     });
 
-    it('does not modify the input map', () => {
+    it('does not modify the input map', async () => {
         const before = new Map(
             [...positions].map(([id, list]) => [id, [...list]] as const),
         );
 
-        optimizer.findShortestPath(positions, { x: 0, y: 0, z: 0 });
+        await optimizer.findShortestPath(positions, { x: 0, y: 0, z: 0 });
 
         assert.deepStrictEqual(positions, before);
     });

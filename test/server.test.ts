@@ -4,8 +4,9 @@ import type { AddressInfo } from "node:net";
 import { API_PATH, createApp } from "../src/infrastructure/Server.js";
 import type { ProductRequest } from "../src/app/dataModels/ProductRequest.js";
 import type { ProductResponse } from "../src/app/dataModels/ProductResponse.js";
-import { InvalidRouteRequestError } from "../src/app/InvalidRouteRequestError.js";
-import { ProductUnavailableError } from "../src/app/ProductUnavailableError.js";
+import { InvalidRouteRequestError } from "../src/app/errors/InvalidRouteRequestError.js";
+import { ProductUnavailableError } from "../src/app/errors/ProductUnavailableError.js";
+import { ForbiddenError } from "../src/app/errors/ForbiddenError.js";
 
 async function withServer<T>(handler: (request: ProductRequest) => Promise<ProductResponse> | ProductResponse, run: (baseUrl: string) => Promise<T>): Promise<T> {
     const server = createApp({ postRequest: async (request) => handler(request) });
@@ -70,9 +71,40 @@ describe("HTTP server", () => {
             });
             assert.equal(response.status, 400);
             assert.deepStrictEqual(await response.json(), {
-                error: "products must be an array of non-empty strings",
+                error: "products must be an array of at most 100 non-empty strings",
             });
             assert.equal(controllerCalled, false);
+        });
+    });
+
+    it("rejects requests with too many products", async () => {
+        await withServer(() => ({ pickingOrder: [], distance: 0 }), async (baseUrl) => {
+            const response = await fetch(baseUrl + API_PATH, {
+                method: "POST",
+                headers: { "content-type": "application/json", connection: "close" },
+                body: JSON.stringify({
+                    products: Array.from({ length: 101 }, (_, index) => "product-" + index),
+                    startingPosition: { x: 0, y: 0, z: 0 },
+                }),
+            });
+            assert.equal(response.status, 400);
+            assert.deepStrictEqual(await response.json(), {
+                error: "products must be an array of at most 100 non-empty strings",
+            });
+        });
+    });
+
+    it("accepts a query string and a trailing slash for the products route", async () => {
+        await withServer(() => ({ pickingOrder: [], distance: 0 }), async (baseUrl) => {
+            const body = JSON.stringify({ products: [], startingPosition: { x: 0, y: 0, z: 0 } });
+            for (const path of ["/products?source=test", "/products/"]) {
+                const response = await fetch(baseUrl + path, {
+                    method: "POST",
+                    headers: { "content-type": "application/json", connection: "close" },
+                    body,
+                });
+                assert.equal(response.status, 200);
+            }
         });
     });
 
@@ -153,6 +185,20 @@ describe("HTTP server", () => {
             assert.deepStrictEqual(await response.json(), {
                 error: 'No pickable position is available for product "product-42". Check the product ID or its availability.',
             });
+        });
+    });
+
+    it("returns 502 without exposing warehouse authentication details", async () => {
+        await withServer(() => {
+            throw new ForbiddenError();
+        }, async (baseUrl) => {
+            const response = await fetch(baseUrl + API_PATH, {
+                method: "POST",
+                headers: { "content-type": "application/json", connection: "close" },
+                body: JSON.stringify({ products: [], startingPosition: { x: 0, y: 0, z: 0 } }),
+            });
+            assert.equal(response.status, 502);
+            assert.deepStrictEqual(await response.json(), { error: "Warehouse authentication failed" });
         });
     });
 });

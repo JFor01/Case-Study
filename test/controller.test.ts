@@ -4,7 +4,7 @@ import { Controller } from "../src/infrastructure/Controller.js";
 import type { ProductRequest } from "../src/app/dataModels/ProductRequest.js";
 import type { ProductResponse } from "../src/app/dataModels/ProductResponse.js";
 import type { Position } from "../src/app/dataModels/Position.js";
-import { ProductUnavailableError } from "../src/app/ProductUnavailableError.js";
+import { ProductUnavailableError } from "../src/app/errors/ProductUnavailableError.js";
 
 const request: ProductRequest = {
     products: ["product 1", "product/2"],
@@ -26,7 +26,7 @@ describe("Controller.postRequest", () => {
         const expected: ProductResponse = { pickingOrder: [], distance: 0 };
         let serviceArgs: [ProductRequest, Position[][]] | undefined;
         const controller = new Controller({
-            optimizeRoute: (order, positions) => {
+            optimizeRoute: async (order, positions) => {
                 serviceArgs = [order, positions];
                 return expected;
             },
@@ -47,7 +47,7 @@ describe("Controller.postRequest", () => {
     it("rejects when the warehouse returns an error", async () => {
         const originalFetch = globalThis.fetch;
         globalThis.fetch = async () => new Response("missing", { status: 404, statusText: "Not Found" });
-        const controller = new Controller({ optimizeRoute: () => ({ pickingOrder: [], distance: 0 }) }, {
+        const controller = new Controller({ optimizeRoute: async () => ({ pickingOrder: [], distance: 0 }) }, {
             baseUrl: "https://warehouse.example", apiKey: "secret",
         });
         try {
@@ -55,6 +55,35 @@ describe("Controller.postRequest", () => {
                 controller.postRequest({ ...request, products: ["missing"] }),
                 ProductUnavailableError,
             );
+        } finally {
+            globalThis.fetch = originalFetch;
+        }
+    });
+
+    it("deduplicates product IDs before fetching positions", async () => {
+        const calls: string[] = [];
+        const originalFetch = globalThis.fetch;
+        globalThis.fetch = async (input) => {
+            calls.push(String(input));
+            return new Response(JSON.stringify([
+                { positionId: "p1", productId: "product-1", x: 1, y: 0, z: 0, quantity: 1 },
+            ]), { status: 200 });
+        };
+        let received: ProductRequest | undefined;
+        const controller = new Controller({
+            optimizeRoute: async (order) => {
+                received = order;
+                return { pickingOrder: [], distance: 0 };
+            },
+        }, { baseUrl: "https://warehouse.example", apiKey: "secret" });
+
+        try {
+            await controller.postRequest({
+                products: ["product-1", "product-1"],
+                startingPosition: { x: 0, y: 0, z: 0 },
+            });
+            assert.equal(calls.length, 1);
+            assert.deepStrictEqual(received?.products, ["product-1"]);
         } finally {
             globalThis.fetch = originalFetch;
         }

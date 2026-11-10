@@ -2,7 +2,7 @@ import type {ProductRequest} from "../app/dataModels/ProductRequest.js";
 import type {ProductResponse} from "../app/dataModels/ProductResponse.js";
 import type {Position} from "../app/dataModels/Position.js";
 import {Optimizer} from "../app/Optimizer.js";
-import { ProductUnavailableError } from "../app/ProductUnavailableError.js";
+import { ProductUnavailableError } from "../app/errors/ProductUnavailableError.js";
 
 export class Service{
 
@@ -10,7 +10,7 @@ export class Service{
         private readonly optimizer: Optimizer,
     ) {}
 
-    public optimizeRoute(req : ProductRequest, productPositions : Position[][]): ProductResponse{
+    public async optimizeRoute(req : ProductRequest, productPositions : Position[][]): Promise<ProductResponse>{
         //use hashMap for efficient index search
         const positionsMap = new Map<string, Position[]>();
         productPositions.forEach((positions, index) => {
@@ -23,7 +23,7 @@ export class Service{
     private mapEntry(positions: Position[], positionsMap: Map<string, Position[]>, requestedProductId: string): void {
         const position = positions[0];
         if (position === undefined) throw new ProductUnavailableError(requestedProductId);
-        positionsMap.set(position.productId, positions);
+        positionsMap.set(requestedProductId, positions.map((item) => ({ ...item, productId: requestedProductId })));
     }
 
 

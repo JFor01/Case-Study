@@ -1,7 +1,7 @@
-import type { Point } from "../dataModels/Point.js";
-import type { Position } from "../dataModels/Position.js";
-import type { ProductResponse } from "../dataModels/ProductResponse.js";
-import type { RouteAlgorithm } from "./RouteAlgorithm.js";
+import type { Point } from "../../dataModels/Point.js";
+import type { Position } from "../../dataModels/Position.js";
+import type { ProductResponse } from "../../dataModels/ProductResponse.js";
+import type { RouteAlgorithm } from "../RouteAlgorithm.js";
 
 /** Fast route strategy used when exact search would be too expensive. */
 export class NearestNeighborAlgorithm implements RouteAlgorithm {
@@ -9,7 +9,7 @@ export class NearestNeighborAlgorithm implements RouteAlgorithm {
         return true;
     }
 
-    public findShortestPath(positions: Map<string, Position[]>, start: Point): ProductResponse {
+    public async findShortestPath(positions: Map<string, Position[]>, start: Point): Promise<ProductResponse> {
         const remaining = new Map(positions);
         const pickingOrder: ProductResponse["pickingOrder"] = [];
         let current = start;

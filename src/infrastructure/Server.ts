@@ -1,9 +1,10 @@
 import { createServer, type IncomingMessage, type ServerResponse, type Server } from "node:http";
 import type { ProductRequest } from "../app/dataModels/ProductRequest.js";
-import { InvalidRouteRequestError } from "../app/InvalidRouteRequestError.js";
-import { ProductUnavailableError } from "../app/ProductUnavailableError.js";
+import { InvalidRouteRequestError } from "../app/errors/InvalidRouteRequestError.js";
+import { ProductUnavailableError } from "../app/errors/ProductUnavailableError.js";
 import type { Controller } from "./Controller.js";
-import {ForbiddenError} from "../app/ForbiddenError.js";
+import {ForbiddenError} from "../app/errors/ForbiddenError.js";
+import { MAX_PRODUCTS } from "../app/limits.js";
 
 export const API_PATH = "/products";
 const MAX_BODY_BYTES = 1_048_576;
@@ -19,7 +20,8 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 export function createApp(controller: Handler): Server {
     return createServer(async (req: IncomingMessage, res: ServerResponse) => {
         // Reject unknown paths and methods before reading any body data.
-        if (req.url !== API_PATH) return send(res, 404, "Page not found\n");
+        const pathname = new URL(req.url ?? "/", "http://localhost").pathname.replace(/\/$/, "");
+        if (pathname !== API_PATH) return send(res, 404, "Page not found\n");
         if (req.method !== "POST") {
             return send(res, 405, "This server accepts only a POST method\n", { Allow: "POST" });
         }
@@ -55,7 +57,7 @@ export function createApp(controller: Handler): Server {
                 return send(res, 422, { error: err.message });
             }
             if(err instanceof ForbiddenError){
-                return send(res,403,{error:err.message})
+                return send(res, 502, { error: err.message });
             }
             console.error(err);
             return send(res, 500, "Internal error\n");
@@ -91,9 +93,10 @@ function parseProductRequest(value: unknown): ProductRequest {
     if (!isRecord(value)) throw new InvalidRouteRequestError("Request body must be a JSON object");
     if (
         !Array.isArray(value.products) ||
+        value.products.length > MAX_PRODUCTS ||
         value.products.some((product) => typeof product !== "string" || product.trim().length === 0)
     ) {
-        throw new InvalidRouteRequestError("products must be an array of non-empty strings");
+        throw new InvalidRouteRequestError("products must be an array of at most " + MAX_PRODUCTS + " non-empty strings");
     }
     if (!isRecord(value.startingPosition)) {
         throw new InvalidRouteRequestError("startingPosition must contain numeric x, y, and z coordinates");

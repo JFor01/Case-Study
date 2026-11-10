@@ -1,32 +1,11 @@
-import type { Point } from "../dataModels/Point.js";
-import type { Position } from "../dataModels/Position.js";
-import type { ProductResponse } from "../dataModels/ProductResponse.js";
-import type { RouteAlgorithm } from "./RouteAlgorithm.js";
-
-const MAX_EXACT_STATES = 6_000_000;
-const MAX_EXACT_TRANSITIONS = 80_000_000;
+import type { Point } from "../../dataModels/Point.js";
+import type { Position } from "../../dataModels/Position.js";
+import type { ProductResponse } from "../../dataModels/ProductResponse.js";
 
 type Candidate = Position & { productIndex: number };
 
-/** Finds the globally shortest route using dynamic programming. */
-export class ExactRouteAlgorithm implements RouteAlgorithm {
-    public canHandle(positions: Map<string, Position[]>): boolean {
-        const groups = [...positions.values()];
-        const productCount = groups.length;
-        const candidateCount = groups.reduce((total, group) => total + group.length, 0);
-
-        // Exact search stores one state for every product subset and ending position.
-        const stateCount = 2 ** productCount * candidateCount;
-        if (stateCount > MAX_EXACT_STATES) return false;
-
-        // Estimate the route extensions between positions belonging to different products.
-        const sameProductPairs = groups.reduce((total, group) => total + group.length ** 2, 0);
-        const transitionCount = productCount < 2
-            ? 0
-            : 2 ** (productCount - 2) * (candidateCount ** 2 - sameProductPairs);
-        return transitionCount <= MAX_EXACT_TRANSITIONS;
-    }
-
+/** Performs the CPU-intensive dynamic-programming calculation for exact routes. */
+export class ExactRouteSolver {
     public findShortestPath(positions: Map<string, Position[]>, start: Point): ProductResponse {
         const groups = [...positions.values()];
         const candidates: Candidate[] = [];
@@ -45,7 +24,6 @@ export class ExactRouteAlgorithm implements RouteAlgorithm {
         const candidateCount = candidates.length;
         const subsetCount = 2 ** productCount;
         const fullMask = subsetCount - 1;
-        // For each subset and ending location, keep its shortest distance and previous location.
         const costs = new Float64Array(subsetCount * candidateCount);
         costs.fill(Number.POSITIVE_INFINITY);
         const previousCandidate = new Int32Array(subsetCount * candidateCount);
@@ -57,7 +35,6 @@ export class ExactRouteAlgorithm implements RouteAlgorithm {
             costs[mask * candidateCount + candidateIndex] = this.calculateDistance(start, candidate);
         }
 
-        // A set bit means that product has been picked. Try each included product as the final pick.
         for (let mask = 1; mask <= fullMask; mask++) {
             for (let productIndex = 0; productIndex < productCount; productIndex++) {
                 const productBit = 1 << productIndex;
@@ -97,7 +74,6 @@ export class ExactRouteAlgorithm implements RouteAlgorithm {
             }
         }
 
-        // Follow saved previous locations back from the best complete route.
         const reversed: ProductResponse["pickingOrder"] = [];
         let mask = fullMask;
         let current = lastCandidate;
