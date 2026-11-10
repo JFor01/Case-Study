@@ -13,7 +13,6 @@ npm start
 ```
 For using this, you need to provide your API key in the environment variable `X_API_KEY` in .env or in terminal.
 Otherwise the server won't start.
-Warehouse positions are fetched concurrently for each request.
 
 Run the tests with:
 
