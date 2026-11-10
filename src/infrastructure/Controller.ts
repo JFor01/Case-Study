@@ -5,7 +5,7 @@ import { ProductUnavailableError } from "../app/errors/ProductUnavailableError.j
 import { InvalidRouteRequestError } from "../app/errors/InvalidRouteRequestError.js";
 import type { Service } from "./Service.js";
 import {ForbiddenError} from "../app/errors/ForbiddenError.js";
-import { MAX_PRODUCTS, WAREHOUSE_CONCURRENCY, WAREHOUSE_TIMEOUT_MS } from "../app/limits.js";
+import { MAX_PRODUCTS, WAREHOUSE_TIMEOUT_MS } from "../app/limits.js";
 
 export interface ControllerConfig {
     baseUrl: string; // this is to mainly handle quick switches from mock to real endpoint
@@ -23,7 +23,7 @@ export class Controller {
             throw new InvalidRouteRequestError("A maximum of " + MAX_PRODUCTS + " products may be requested");
         }
         const productIds = [...new Set(request.products)];
-        const positions = await this.fetchPositionsWithLimit(productIds);
+        const positions = await Promise.all(productIds.map((productId) => this.fetchPositions(productId)));
         return this.service.optimizeRoute({ ...request, products: productIds }, positions);
     }
 
@@ -43,19 +43,4 @@ export class Controller {
         return positions;
     }
 
-    private async fetchPositionsWithLimit(productIds: string[]): Promise<Position[][]> {
-        const results: Position[][] = new Array(productIds.length);
-        let nextIndex = 0;
-        const worker = async (): Promise<void> => {
-            while (true) {
-                const index = nextIndex++;
-                if (index >= productIds.length) return;
-                results[index] = await this.fetchPositions(productIds[index]!);
-            }
-        };
-        await Promise.all(
-            Array.from({ length: Math.min(WAREHOUSE_CONCURRENCY, productIds.length) }, worker),
-        );
-        return results;
-    }
 }

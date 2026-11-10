@@ -6,7 +6,6 @@ import { ExactRouteAlgorithm } from "./algoritms/exactRoute/ExactRouteAlgorithm.
 import { NearestNeighborAlgorithm } from "./algoritms/nearestNeighbor/NearestNeighborAlgorithm.js";
 import type { RouteAlgorithm } from "./algoritms/RouteAlgorithm.js";
 import { ProductUnavailableError } from "./errors/ProductUnavailableError.js";
-import { ExactRouteTimeoutError } from "./algoritms/exactRoute/ExactRouteTimeoutError.js";
 
 /**
  * Selects a route strategy while keeping one public entry point for callers.
@@ -37,15 +36,7 @@ export class Optimizer {
         const suitableAlgorithms = this.algorithms.filter((candidate) => candidate.canHandle(availablePositions));
         if (suitableAlgorithms.length === 0) throw new Error("No route algorithm can handle this request");
 
-        for (const algorithm of suitableAlgorithms) {
-            try {
-                return await algorithm.findShortestPath(availablePositions, start);
-            } catch (error) {
-                if (!(error instanceof ExactRouteTimeoutError)) throw error;
-            }
-        }
-
-        throw new Error("No route algorithm completed this request");
+        return suitableAlgorithms[0]!.findShortestPath(availablePositions, start);
     }
 
     private filterPickablePositions(positions: Map<string, Position[]>): Map<string, Position[]> {

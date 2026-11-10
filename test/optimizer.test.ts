@@ -3,8 +3,6 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import {Optimizer} from "../src/app/Optimizer.js";
 import type {Position} from "../src/app/dataModels/Position.js";
-import { ExactRouteAlgorithm } from "../src/app/algoritms/exactRoute/ExactRouteAlgorithm.js";
-import { NearestNeighborAlgorithm } from "../src/app/algoritms/nearestNeighbor/NearestNeighborAlgorithm.js";
 
 function assertClose(actual: number, expected: number, tolerance = 1e-9): void {
     assert.ok(
@@ -58,25 +56,6 @@ describe('exact route optimization', () => {
             { productId: 'product-B', positionId: 'B' },
         ]);
         assertClose(plan.distance, 1 + Math.sqrt(40) + Math.sqrt(17) + Math.sqrt(10) + Math.sqrt(20));
-    });
-
-    it('falls back to nearest neighbour when the exact worker times out', async () => {
-        const optimizer = new Optimizer([
-            new ExactRouteAlgorithm(1),
-            new NearestNeighborAlgorithm(),
-        ]);
-        const positions = new Map<string, Position[]>([
-            ['product-A', [pos('position-A', 'product-A', 8)]],
-            ['product-B', [pos('position-B', 'product-B', 3)]],
-        ]);
-
-        const plan = await optimizer.findShortestPath(positions, { x: 0, y: 0, z: 0 });
-
-        assert.deepStrictEqual(plan.pickingOrder, [
-            { productId: 'product-B', positionId: 'position-B' },
-            { productId: 'product-A', positionId: 'position-A' },
-        ]);
-        assertClose(plan.distance, 8);
     });
 
     it('uses a valid nearest-neighbour route when the exact search is too large', async () => {

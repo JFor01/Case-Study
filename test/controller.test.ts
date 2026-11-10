@@ -6,7 +6,7 @@ import type { ProductRequest } from "../src/app/dataModels/ProductRequest.js";
 import type { ProductResponse } from "../src/app/dataModels/ProductResponse.js";
 import type { Position } from "../src/app/dataModels/Position.js";
 import { ProductUnavailableError } from "../src/app/errors/ProductUnavailableError.js";
-import { MAX_PRODUCTS, WAREHOUSE_CONCURRENCY } from "../src/app/limits.js";
+import { MAX_PRODUCTS } from "../src/app/limits.js";
 
 const request: ProductRequest = {
     products: ["product 1", "product/2"],
@@ -141,11 +141,11 @@ describe("Controller.postRequest", () => {
             const elapsedMs = Math.round(performance.now() - startedAt);
 
             assert.equal(upstreamCalls, concurrentRequests * MAX_PRODUCTS);
-            assert.ok(peakInFlight <= concurrentRequests * WAREHOUSE_CONCURRENCY);
+            assert.equal(peakInFlight, concurrentRequests * MAX_PRODUCTS);
             assert.ok(results.every((result) => result.pickingOrder.length === MAX_PRODUCTS));
             console.log(
-                `[benchmark] ${concurrentRequests} concurrent requests × ${MAX_PRODUCTS} products: ` +
-                `${elapsedMs} ms; peak warehouse calls in flight: ${peakInFlight}`,
+                `[benchmark] ${concurrentRequests} concurrent requests × ${MAX_PRODUCTS} products ` +
+                `with Promise.all: ${elapsedMs} ms; peak in-flight: ${peakInFlight}`,
             );
         } finally {
             globalThis.fetch = originalFetch;

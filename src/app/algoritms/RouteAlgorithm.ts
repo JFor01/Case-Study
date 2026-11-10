@@ -13,9 +13,9 @@ export interface RouteAlgorithm {
     canHandle(positions: Map<string, Position[]>): boolean;
 
     /**
-     * Asynchronously choose one position for every product and return the route from start.
+     * Choose one position for every product and return the route from start.
      * Distance is the sum of 3D legs; the route does not include a return trip.
      * Optimizer validates that the map has non-empty position lists first.
      */
-    findShortestPath(positions: Map<string, Position[]>, start: Point): Promise<ProductResponse>;
+    findShortestPath(positions: Map<string, Position[]>, start: Point): ProductResponse | Promise<ProductResponse>;
 }

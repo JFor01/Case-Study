@@ -1,22 +1,16 @@
-import { Worker } from "node:worker_threads";
 import type { Point } from "../../dataModels/Point.js";
 import type { Position } from "../../dataModels/Position.js";
 import type { ProductResponse } from "../../dataModels/ProductResponse.js";
 import type { RouteAlgorithm } from "../RouteAlgorithm.js";
-import { ExactRouteTimeoutError } from "./ExactRouteTimeoutError.js";
 
 const MAX_EXACT_STATES = 1_000_000;
 const MAX_EXACT_TRANSITIONS = 10_000_000;
 const EXACT_SEARCH_TIMEOUT_MS = 5_000;
 
-type ExactRouteWorkerMessage =
-    | { result: ProductResponse }
-    | { error: string };
+type Candidate = Position & { productIndex: number };
 
 /** Finds the globally shortest route using dynamic programming. */
 export class ExactRouteAlgorithm implements RouteAlgorithm {
-    constructor(private readonly timeoutMs = EXACT_SEARCH_TIMEOUT_MS) {}
-
     public canHandle(positions: Map<string, Position[]>): boolean {
         const groups = [...positions.values()];
         const productCount = groups.length;
@@ -34,40 +28,91 @@ export class ExactRouteAlgorithm implements RouteAlgorithm {
         return transitionCount <= MAX_EXACT_TRANSITIONS;
     }
 
-    /**
-     * Run the costly exact calculation away from the HTTP server's event loop.
-     * A worker is short-lived because exact searches are deliberately bounded.
-     */
-    public findShortestPath(positions: Map<string, Position[]>, start: Point): Promise<ProductResponse> {
-        return new Promise((resolve, reject) => {
-            const worker = new Worker(new URL("./exactRoute.worker.mjs", import.meta.url), {
-                workerData: { positions, start },
-            });
-            let settled = false;
-            const timeout = setTimeout(() => {
-                if (settled) return;
-                settled = true;
-                void worker.terminate();
-                reject(new ExactRouteTimeoutError(EXACT_SEARCH_TIMEOUT_MS));
-            }, this.timeoutMs);
+    public findShortestPath(positions: Map<string, Position[]>, start: Point): ProductResponse {
+        const groups = [...positions.values()];
+        const candidates: Candidate[] = [];
+        const groupCandidateIndexes: number[][] = [];
 
-            const settle = (callback: () => void): void => {
-                if (settled) return;
-                settled = true;
-                clearTimeout(timeout);
-                callback();
-            };
-
-            worker.once("message", (message: ExactRouteWorkerMessage) => {
-                settle(() => {
-                    if ("error" in message) reject(new Error(message.error));
-                    else resolve(message.result);
-                });
+        groups.forEach((productPositions, productIndex) => {
+            const indexes: number[] = [];
+            productPositions.forEach((position) => {
+                indexes.push(candidates.length);
+                candidates.push({ ...position, productIndex });
             });
-            worker.once("error", (error) => settle(() => reject(error)));
-            worker.once("exit", (code) => {
-                settle(() => reject(new Error(`Exact route worker exited before returning a result (code ${code})`)));
-            });
+            groupCandidateIndexes.push(indexes);
         });
+
+        const productCount = groups.length;
+        const candidateCount = candidates.length;
+        const subsetCount = 2 ** productCount;
+        const fullMask = subsetCount - 1;
+        const costs = new Float64Array(subsetCount * candidateCount);
+        costs.fill(Number.POSITIVE_INFINITY);
+        const previousCandidate = new Int32Array(subsetCount * candidateCount);
+        previousCandidate.fill(-1);
+
+        for (let candidateIndex = 0; candidateIndex < candidateCount; candidateIndex++) {
+            const candidate = candidates[candidateIndex]!;
+            const mask = 1 << candidate.productIndex;
+            costs[mask * candidateCount + candidateIndex] = this.calculateDistance(start, candidate);
+        }
+
+        // Each state is the lowest route cost for a visited product set ending at one candidate.
+        for (let mask = 1; mask <= fullMask; mask++) {
+            for (let productIndex = 0; productIndex < productCount; productIndex++) {
+                const productBit = 1 << productIndex;
+                if ((mask & productBit) === 0) continue;
+                const previousMask = mask ^ productBit;
+                if (previousMask === 0) continue;
+
+                for (const candidateIndex of groupCandidateIndexes[productIndex]!) {
+                    const candidate = candidates[candidateIndex]!;
+                    const stateIndex = mask * candidateCount + candidateIndex;
+                    for (let previousProduct = 0; previousProduct < productCount; previousProduct++) {
+                        const previousBit = 1 << previousProduct;
+                        if ((previousMask & previousBit) === 0) continue;
+                        for (const previousIndex of groupCandidateIndexes[previousProduct]!) {
+                            const previousState = previousMask * candidateCount + previousIndex;
+                            const previousCost = costs[previousState]!;
+                            if (!Number.isFinite(previousCost)) continue;
+                            const total = previousCost + this.calculateDistance(candidates[previousIndex]!, candidate);
+                            if (total < costs[stateIndex]!) {
+                                costs[stateIndex] = total;
+                                previousCandidate[stateIndex] = previousIndex;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        let bestCost = Number.POSITIVE_INFINITY;
+        let lastCandidate = -1;
+        for (let candidateIndex = 0; candidateIndex < candidateCount; candidateIndex++) {
+            const stateIndex = fullMask * candidateCount + candidateIndex;
+            const cost = costs[stateIndex]!;
+            if (cost < bestCost) {
+                bestCost = cost;
+                lastCandidate = candidateIndex;
+            }
+        }
+
+        const reversed: ProductResponse["pickingOrder"] = [];
+        let mask = fullMask;
+        let current = lastCandidate;
+        while (current >= 0) {
+            const candidate = candidates[current]!;
+            reversed.push({ productId: candidate.productId, positionId: candidate.positionId });
+            const stateIndex = mask * candidateCount + current;
+            const previous = previousCandidate[stateIndex]!;
+            mask ^= 1 << candidate.productIndex;
+            current = previous;
+        }
+
+        return { pickingOrder: reversed.reverse(), distance: bestCost };
+    }
+
+    private calculateDistance(a: Point, b: Point): number {
+        return Math.hypot(a.x - b.x, a.y - b.y, a.z - b.z);
     }
 }

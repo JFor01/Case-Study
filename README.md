@@ -13,6 +13,7 @@ npm start
 ```
 For using this, you need to provide your API key in the environment variable `X_API_KEY` in .env or in terminal.
 Otherwise the server won't start.
+Warehouse positions are fetched concurrently for each request.
 
 Run the tests with:
 
@@ -50,7 +51,7 @@ The response contains `pickingOrder` entries with `productId` and `positionId`, 
 
 The default order is:
 
-1. `ExactRouteAlgorithm` uses dynamic programming to find the shortest route. Its calculation runs in a short-lived Node worker thread, so it does not block the HTTP server's event loop. It declines requests that exceed its state or transition limits.
+1. `ExactRouteAlgorithm` uses dynamic programming to find the shortest route. It runs synchronously and declines requests that exceed its state or transition limits.
 2. `NearestNeighborAlgorithm` is the fallback. It is fast and handles any request, but it does not guarantee the globally shortest route.
 
 Both strategies choose one available position for each product. Distance is the sum of 3D legs from the starting point through the picks; the route does not return to the start.
@@ -58,7 +59,7 @@ Both strategies choose one available position for each product. Distance is the 
 ## Add a route algorithm
 
 1. Add a class that implements `RouteAlgorithm` from `src`.
-2. Implement `canHandle` as a quick, read-only check. Implement asynchronous `findShortestPath` for inputs the strategy accepts.
+2. Implement `canHandle` as a quick, read-only check. Implement `findShortestPath` for inputs the strategy accepts; it may return a result directly or a promise.
 3. Register the new instance in the `Optimizer` constructor's strategy list. The first strategy that can handle a request wins. Keep the always-available nearest-neighbor strategy last unless it should be replaced.
 
 You can also pass a custom strategy list to `new Optimizer([...])`.

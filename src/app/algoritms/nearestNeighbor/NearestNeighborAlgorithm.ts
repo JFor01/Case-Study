@@ -9,7 +9,7 @@ export class NearestNeighborAlgorithm implements RouteAlgorithm {
         return true;
     }
 
-    public async findShortestPath(positions: Map<string, Position[]>, start: Point): Promise<ProductResponse> {
+    public findShortestPath(positions: Map<string, Position[]>, start: Point): ProductResponse {
         const remaining = new Map(positions);
         const pickingOrder: ProductResponse["pickingOrder"] = [];
         let current = start;
