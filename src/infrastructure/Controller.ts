@@ -1,6 +1,7 @@
 import type { ProductRequest } from "../app/dataModels/ProductRequest.js";
 import type { ProductResponse } from "../app/dataModels/ProductResponse.js";
 import type { Position } from "../app/dataModels/Position.js";
+import { ProductUnavailableError } from "../app/ProductUnavailableError.js";
 import type { Service } from "./Service.js";
 
 export interface ControllerConfig {
@@ -24,9 +25,12 @@ export class Controller {
     private async fetchPositions(productId: string): Promise<Position[]> {
         const url = `${this.config.baseUrl}/products/${encodeURIComponent(productId)}/positions`;
         const res = await fetch(url, { headers: { "x-api-key": this.config.apiKey } });
+        if (res.status === 404) throw new ProductUnavailableError(productId);
         if (!res.ok) {
             throw new Error(`Positions for ${productId} failed: ${res.status} ${res.statusText}`);
         }
-        return (await res.json()) as Position[];
+        const positions = (await res.json()) as Position[];
+        if (positions.length === 0) throw new ProductUnavailableError(productId);
+        return positions;
     }
 }

@@ -4,6 +4,7 @@ import { Controller } from "../src/infrastructure/Controller.js";
 import type { ProductRequest } from "../src/app/dataModels/ProductRequest.js";
 import type { ProductResponse } from "../src/app/dataModels/ProductResponse.js";
 import type { Position } from "../src/app/dataModels/Position.js";
+import { ProductUnavailableError } from "../src/app/ProductUnavailableError.js";
 
 const request: ProductRequest = {
     products: ["product 1", "product/2"],
@@ -50,7 +51,10 @@ describe("Controller.postRequest", () => {
             baseUrl: "https://warehouse.example", apiKey: "secret",
         });
         try {
-            await assert.rejects(controller.postRequest({ ...request, products: ["missing"] }), /missing failed: 404 Not Found/);
+            await assert.rejects(
+                controller.postRequest({ ...request, products: ["missing"] }),
+                ProductUnavailableError,
+            );
         } finally {
             globalThis.fetch = originalFetch;
         }

@@ -5,6 +5,7 @@ import { InvalidRouteRequestError } from "./InvalidRouteRequestError.js";
 import { ExactRouteAlgorithm } from "./algoritms/ExactRouteAlgorithm.js";
 import { NearestNeighborAlgorithm } from "./algoritms/NearestNeighborAlgorithm.js";
 import type { RouteAlgorithm } from "./algoritms/RouteAlgorithm.js";
+import { ProductUnavailableError } from "./ProductUnavailableError.js";
 
 /**
  * Selects a route strategy while keeping one public entry point for callers.
@@ -40,13 +41,13 @@ export class Optimizer {
     private filterPickablePositions(positions: Map<string, Position[]>): Map<string, Position[]> {
         const pickablePositions = new Map<string, Position[]>();
         for (const [productId, productPositions] of positions) {
-            if (productPositions.length === 0) throw new Error(`No positions for product ${productId}`);
+            if (productPositions.length === 0) throw new ProductUnavailableError(productId);
 
             const inStock = productPositions.filter(
                 (position) => Number.isFinite(position.quantity) && position.quantity >= 1,
             );
             if (inStock.length === 0) {
-                throw new Error(`No positions with available quantity for product ${productId}`);
+                throw new ProductUnavailableError(productId);
             }
 
             const withValidCoordinates = inStock.filter((position) =>
@@ -55,7 +56,7 @@ export class Optimizer {
                 Number.isFinite(position.z) && position.z >= 0,
             );
             if (withValidCoordinates.length === 0) {
-                throw new Error(`No positions with valid non-negative coordinates for product ${productId}`);
+                throw new ProductUnavailableError(productId);
             }
             pickablePositions.set(productId, withValidCoordinates);
         }

@@ -5,6 +5,7 @@ import { API_PATH, createApp } from "../src/infrastructure/Server.js";
 import type { ProductRequest } from "../src/app/dataModels/ProductRequest.js";
 import type { ProductResponse } from "../src/app/dataModels/ProductResponse.js";
 import { InvalidRouteRequestError } from "../src/app/InvalidRouteRequestError.js";
+import { ProductUnavailableError } from "../src/app/ProductUnavailableError.js";
 
 async function withServer<T>(handler: (request: ProductRequest) => Promise<ProductResponse> | ProductResponse, run: (baseUrl: string) => Promise<T>): Promise<T> {
     const server = createApp({ postRequest: async (request) => handler(request) });
@@ -123,6 +124,22 @@ describe("HTTP server", () => {
             assert.match(response.headers.get("content-type") ?? "", /application\/json/);
             assert.deepStrictEqual(await response.json(), {
                 error: "Starting position coordinates must be finite, non-negative numbers",
+            });
+        });
+    });
+
+    it("returns 422 with a product-specific message when no pickable position exists", async () => {
+        await withServer(() => {
+            throw new ProductUnavailableError("product-42");
+        }, async (baseUrl) => {
+            const response = await fetch(`${baseUrl}${API_PATH}`, {
+                method: "POST",
+                headers: { "content-type": "application/json", connection: "close" },
+                body: JSON.stringify({ products: ["product-42"], startingPosition: { x: 0, y: 0, z: 0 } }),
+            });
+            assert.equal(response.status, 422);
+            assert.deepStrictEqual(await response.json(), {
+                error: 'No pickable position is available for product "product-42". Check the product ID or its availability.',
             });
         });
     });

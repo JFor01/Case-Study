@@ -41,7 +41,7 @@ describe("Service.optimizeRoute", () => {
     it("throws a useful error when a product has no positions", () => {
         assert.throws(
             () => new Service(new Optimizer()).optimizeRoute(request(["product-1"]), [[]]),
-            /no positions returned for a product/i,
+            /no pickable position is available for product "product-1"/i,
         );
     });
 });

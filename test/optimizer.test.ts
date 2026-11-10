@@ -153,7 +153,7 @@ describe('findShortestPath (more cases)', () => {
         ]);
         assert.throws(
             () => optimizer.findShortestPath(map, { x: 0, y: 0, z: 0 }),
-            /no positions with available quantity for product product-1/i,
+            /no pickable position is available for product "product-1"/i,
         );
     });
 
@@ -165,7 +165,7 @@ describe('findShortestPath (more cases)', () => {
             ]);
             assert.throws(
                 () => optimizer.findShortestPath(map, { x: 0, y: 0, z: 0 }),
-                /no positions with available quantity for product product-1/i,
+                /no pickable position is available for product "product-1"/i,
             );
         }
     });
@@ -192,7 +192,7 @@ describe('findShortestPath (more cases)', () => {
         ]);
         assert.throws(
             () => optimizer.findShortestPath(map, { x: 0, y: 0, z: 0 }),
-            /no positions with valid non-negative coordinates for product product-1/i,
+            /no pickable position is available for product "product-1"/i,
         );
     });
 
@@ -212,7 +212,7 @@ describe('findShortestPath (more cases)', () => {
             ]);
             assert.throws(
                 () => optimizer.findShortestPath(map, { x: 0, y: 0, z: 0 }),
-                /no positions with valid non-negative coordinates for product product-1/i,
+                /no pickable position is available for product "product-1"/i,
             );
         }
     });
