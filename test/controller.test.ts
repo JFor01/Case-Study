@@ -1,10 +1,12 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
+import { performance } from "node:perf_hooks";
 import { Controller } from "../src/infrastructure/Controller.js";
 import type { ProductRequest } from "../src/app/dataModels/ProductRequest.js";
 import type { ProductResponse } from "../src/app/dataModels/ProductResponse.js";
 import type { Position } from "../src/app/dataModels/Position.js";
 import { ProductUnavailableError } from "../src/app/errors/ProductUnavailableError.js";
+import { MAX_PRODUCTS, WAREHOUSE_CONCURRENCY } from "../src/app/limits.js";
 
 const request: ProductRequest = {
     products: ["product 1", "product/2"],
@@ -84,6 +86,67 @@ describe("Controller.postRequest", () => {
             });
             assert.equal(calls.length, 1);
             assert.deepStrictEqual(received?.products, ["product-1"]);
+        } finally {
+            globalThis.fetch = originalFetch;
+        }
+    });
+
+    it("benchmarks concurrent maximum-size requests against a simulated warehouse", async () => {
+        const concurrentRequests = 8;
+        const simulatedLatencyMs = 10;
+        const originalFetch = globalThis.fetch;
+        let inFlight = 0;
+        let peakInFlight = 0;
+        let upstreamCalls = 0;
+
+        globalThis.fetch = async (input) => {
+            upstreamCalls++;
+            inFlight++;
+            peakInFlight = Math.max(peakInFlight, inFlight);
+            await new Promise((resolve) => setTimeout(resolve, simulatedLatencyMs));
+            inFlight--;
+
+            const productId = decodeURIComponent(String(input).split("/products/")[1]!.split("/positions")[0]!);
+            const index = Number(productId.slice("product-".length));
+            const position: Position = {
+                positionId: `position-${index}`,
+                productId,
+                x: index % 100,
+                y: index % 10,
+                z: index % 300,
+                quantity: 1,
+            };
+            return new Response(JSON.stringify([position]), { status: 200 });
+        };
+
+        const controller = new Controller({
+            optimizeRoute: async (_order, positions) => ({
+                pickingOrder: positions.map(([position]) => ({
+                    productId: position!.productId,
+                    positionId: position!.positionId,
+                })),
+                distance: 0,
+            }),
+        }, { baseUrl: "https://warehouse.example", apiKey: "benchmark" });
+        const productRequest: ProductRequest = {
+            products: Array.from({ length: MAX_PRODUCTS }, (_, index) => `product-${index}`),
+            startingPosition: { x: 0, y: 0, z: 0 },
+        };
+
+        try {
+            const startedAt = performance.now();
+            const results = await Promise.all(
+                Array.from({ length: concurrentRequests }, () => controller.postRequest(productRequest)),
+            );
+            const elapsedMs = Math.round(performance.now() - startedAt);
+
+            assert.equal(upstreamCalls, concurrentRequests * MAX_PRODUCTS);
+            assert.ok(peakInFlight <= concurrentRequests * WAREHOUSE_CONCURRENCY);
+            assert.ok(results.every((result) => result.pickingOrder.length === MAX_PRODUCTS));
+            console.log(
+                `[benchmark] ${concurrentRequests} concurrent requests × ${MAX_PRODUCTS} products: ` +
+                `${elapsedMs} ms; peak warehouse calls in flight: ${peakInFlight}`,
+            );
         } finally {
             globalThis.fetch = originalFetch;
         }

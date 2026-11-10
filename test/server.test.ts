@@ -7,6 +7,7 @@ import type { ProductResponse } from "../src/app/dataModels/ProductResponse.js";
 import { InvalidRouteRequestError } from "../src/app/errors/InvalidRouteRequestError.js";
 import { ProductUnavailableError } from "../src/app/errors/ProductUnavailableError.js";
 import { ForbiddenError } from "../src/app/errors/ForbiddenError.js";
+import { MAX_PRODUCTS } from "../src/app/limits.js";
 
 async function withServer<T>(handler: (request: ProductRequest) => Promise<ProductResponse> | ProductResponse, run: (baseUrl: string) => Promise<T>): Promise<T> {
     const server = createApp({ postRequest: async (request) => handler(request) });
@@ -71,7 +72,7 @@ describe("HTTP server", () => {
             });
             assert.equal(response.status, 400);
             assert.deepStrictEqual(await response.json(), {
-                error: "products must be an array of at most 100 non-empty strings",
+                error: `products must be an array of at most ${MAX_PRODUCTS} non-empty strings`,
             });
             assert.equal(controllerCalled, false);
         });
@@ -83,13 +84,13 @@ describe("HTTP server", () => {
                 method: "POST",
                 headers: { "content-type": "application/json", connection: "close" },
                 body: JSON.stringify({
-                    products: Array.from({ length: 101 }, (_, index) => "product-" + index),
+                    products: Array.from({ length: MAX_PRODUCTS + 1 }, (_, index) => "product-" + index),
                     startingPosition: { x: 0, y: 0, z: 0 },
                 }),
             });
             assert.equal(response.status, 400);
             assert.deepStrictEqual(await response.json(), {
-                error: "products must be an array of at most 100 non-empty strings",
+                error: `products must be an array of at most ${MAX_PRODUCTS} non-empty strings`,
             });
         });
     });

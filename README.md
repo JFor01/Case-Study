@@ -11,11 +11,8 @@ To run the app against the configured warehouse API:
 ```sh
 npm start
 ```
-For using this, you need to provide your API key in the environment variable `X_API_KEY`, otherwise the
-warehouse server will respond with **403**.
-
-Set `WAREHOUSE_API_URL` to point at another warehouse endpoint, such as a local mock. Requests are limited
-to 100 unique products, and warehouse calls are made with a timeout and bounded concurrency.
+For using this, you need to provide your API key in the environment variable `X_API_KEY` in .env or exported in terminal, otherwise the
+upstream server will respond with **403**.
 
 Run the tests with:
 

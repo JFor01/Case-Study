@@ -1,4 +1,4 @@
-/** A requested product has no position the picker can use. */
+/** Authentcication from upstream server failed*/
 export class ForbiddenError extends Error {
     constructor() {
         super("Warehouse authentication failed");
