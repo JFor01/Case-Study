@@ -11,8 +11,8 @@ To run the app against the configured warehouse API:
 ```sh
 npm start
 ```
-For using this, you need to provide your API key in the environment variable `X_API_KEY` in .env or exported in terminal, otherwise the
-upstream server will respond with **403**.
+For using this, you need to provide your API key in the environment variable `X_API_KEY` in .env or in terminal.
+Otherwise the server won't start.
 
 Run the tests with:
 
