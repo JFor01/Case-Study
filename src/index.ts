@@ -2,6 +2,7 @@ import { Service } from "./infrastructure/Service.js";
 import { Controller } from "./infrastructure/Controller.js";
 import {createApp} from "./infrastructure/Server.js";
 import {Optimizer} from "./app/Optimizer.js";
+import "dotenv/config"
 
 const apiKey = process.env.X_API_KEY;
 if (!apiKey) {
