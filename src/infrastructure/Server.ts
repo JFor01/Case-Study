@@ -3,6 +3,7 @@ import type { ProductRequest } from "../app/dataModels/ProductRequest.js";
 import { InvalidRouteRequestError } from "../app/InvalidRouteRequestError.js";
 import { ProductUnavailableError } from "../app/ProductUnavailableError.js";
 import type { Controller } from "./Controller.js";
+import {ForbiddenError} from "../app/ForbiddenError.js";
 
 export const API_PATH = "/products";
 
@@ -47,6 +48,9 @@ export function createApp(controller: Handler): Server {
             }
             if (err instanceof ProductUnavailableError) {
                 return send(res, 422, { error: err.message });
+            }
+            if(err instanceof ForbiddenError){
+                return send(res,403,{error:err.message})
             }
             console.error(err);
             return send(res, 500, "Internal error\n");

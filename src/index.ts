@@ -5,7 +5,7 @@ import {Optimizer} from "./app/Optimizer.js";
 
 //using dependency injection to wire stateless dependencies
 const controller = new Controller(new Service(new Optimizer()), {
-    baseUrl: process.env.WAREHOUSE_API_URL ?? "https://api.gymbeam.io/case-study-picking-optimization",
+    baseUrl: "https://api.gymbeam.io/case-study-picking-optimization",
     apiKey: process.env.X_API_KEY ?? ""
 });
 

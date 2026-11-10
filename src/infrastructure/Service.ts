@@ -3,7 +3,6 @@ import type {ProductResponse} from "../app/dataModels/ProductResponse.js";
 import type {Position} from "../app/dataModels/Position.js";
 import {Optimizer} from "../app/Optimizer.js";
 import { ProductUnavailableError } from "../app/ProductUnavailableError.js";
-import type {ControllerConfig} from "./Controller.js";
 
 export class Service{
 

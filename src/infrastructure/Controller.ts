@@ -3,6 +3,7 @@ import type { ProductResponse } from "../app/dataModels/ProductResponse.js";
 import type { Position } from "../app/dataModels/Position.js";
 import { ProductUnavailableError } from "../app/ProductUnavailableError.js";
 import type { Service } from "./Service.js";
+import {ForbiddenError} from "../app/ForbiddenError.js";
 
 export interface ControllerConfig {
     baseUrl: string; // this is to mainly handle quick switches from mock to real endpoint
@@ -26,6 +27,7 @@ export class Controller {
         const url = `${this.config.baseUrl}/products/${encodeURIComponent(productId)}/positions`;
         const res = await fetch(url, { headers: { "x-api-key": this.config.apiKey } });
         if (res.status === 404) throw new ProductUnavailableError(productId);
+        if(res.status === 403) throw new ForbiddenError();
         if (!res.ok) {
             throw new Error(`Positions for ${productId} failed: ${res.status} ${res.statusText}`);
         }
