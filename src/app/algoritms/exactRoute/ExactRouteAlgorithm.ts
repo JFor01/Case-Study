@@ -28,6 +28,7 @@ export class ExactRouteAlgorithm implements RouteAlgorithm {
         return transitionCount <= MAX_EXACT_TRANSITIONS;
     }
 
+    //Dynamic programming magic
     public findShortestPath(positions: Map<string, Position[]>, start: Point): ProductResponse {
         const groups = [...positions.values()];
         const candidates: Candidate[] = [];
