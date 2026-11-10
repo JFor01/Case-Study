@@ -15,6 +15,8 @@ type ExactRouteWorkerMessage =
 
 /** Finds the globally shortest route using dynamic programming. */
 export class ExactRouteAlgorithm implements RouteAlgorithm {
+    constructor(private readonly timeoutMs = EXACT_SEARCH_TIMEOUT_MS) {}
+
     public canHandle(positions: Map<string, Position[]>): boolean {
         const groups = [...positions.values()];
         const productCount = groups.length;
@@ -47,7 +49,7 @@ export class ExactRouteAlgorithm implements RouteAlgorithm {
                 settled = true;
                 void worker.terminate();
                 reject(new ExactRouteTimeoutError(EXACT_SEARCH_TIMEOUT_MS));
-            }, EXACT_SEARCH_TIMEOUT_MS);
+            }, this.timeoutMs);
 
             const settle = (callback: () => void): void => {
                 if (settled) return;
